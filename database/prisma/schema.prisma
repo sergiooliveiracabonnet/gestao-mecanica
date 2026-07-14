@@ -1,0 +1,13 @@
+// Configuração base do Prisma para o Oficina SaaS.
+// Nenhum model de domínio ainda — Tenant, User, Customer, Vehicle, ServiceOrder
+// etc. chegam nas Features 2-5, cada uma adicionando os models de seu escopo.
+// Ver docs/superpowers/specs/2026-07-14-arquitetura-mvp-design.md seção 5.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
