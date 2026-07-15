@@ -17,10 +17,20 @@ COPY . .
 RUN pnpm --filter=@oficina/contracts build
 RUN pnpm --filter=@oficina/backend build
 
+# pnpm's node_modules are symlinks (relative, resolved within this Linux build
+# context) — @oficina/contracts resolves straight into packages/contracts/,
+# and package symlinks resolve into the root node_modules/.pnpm store. The
+# runtime stage must keep the SAME relative layout for those links to work;
+# copying only backend/node_modules (without the root store + contracts
+# package it points at) produces a container that crashes on boot with
+# "Cannot find module" for every transitive dependency.
 FROM base AS runtime
 ENV NODE_ENV=production
-COPY --from=build /app/backend/dist ./dist
-COPY --from=build /app/backend/node_modules ./node_modules
-COPY --from=build /app/backend/package.json ./package.json
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/backend/node_modules ./backend/node_modules
+COPY --from=build /app/backend/dist ./backend/dist
+COPY --from=build /app/backend/package.json ./backend/package.json
+COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build /app/packages/contracts/package.json ./packages/contracts/package.json
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+CMD ["node", "backend/dist/main.js"]

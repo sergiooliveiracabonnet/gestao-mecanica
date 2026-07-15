@@ -16,7 +16,15 @@ export function HealthStatus() {
       role="status"
       className={`flex flex-col gap-1 rounded-card border px-4 py-3 text-sm ${BADGE_STYLES[health.status]}`}
     >
-      {health.status === 'loading' && <span>● Verificando conexão...</span>}
+      {health.status === 'loading' && (
+        <span className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="h-3 w-3 animate-spin rounded-full border-2 border-text-muted border-t-transparent"
+          />
+          Verificando conexão...
+        </span>
+      )}
       {health.status === 'success' && (
         <>
           <span>● Backend conectado</span>

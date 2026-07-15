@@ -4,15 +4,16 @@
   "version": "0.0.0",
   "scripts": {
     "build": "echo \"no build step for database package\"",
-    "lint": "echo \"no lint configured for database yet\"",
+    "lint": "pnpm run validate",
     "typecheck": "echo \"no typecheck configured for database yet\"",
     "test": "echo \"no tests yet\"",
     "generate": "prisma generate --schema=./prisma/schema.prisma",
     "migrate:dev": "prisma migrate dev --schema=./prisma/schema.prisma",
     "migrate:deploy": "prisma migrate deploy --schema=./prisma/schema.prisma",
-    "validate": "prisma validate --schema=./prisma/schema.prisma"
+    "validate": "cross-env DATABASE_URL=postgresql://validate:validate@localhost:5432/validate prisma validate --schema=./prisma/schema.prisma"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "prisma": "^6.1.0"
   },
   "dependencies": {

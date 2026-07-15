@@ -39,7 +39,7 @@ Postgres/Redis via Docker (se o Docker estiver disponível).
 pnpm turbo run dev
 
 # Subir a stack completa (Postgres, Redis, backend, frontend, NGINX)
-docker compose -f docker/docker-compose.yml up
+docker compose -f docker/docker-compose.yml --project-directory . up
 ```
 
 - Backend: http://localhost:3001 (health check em `/health`)

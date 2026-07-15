@@ -24,7 +24,10 @@ pnpm install
 
 echo "==> Subindo serviços de infraestrutura (docker compose)..."
 if command -v docker >/dev/null 2>&1; then
-  docker compose -f docker/docker-compose.yml up -d postgres redis
+  # --project-directory . makes Compose read ./.env (repo root, where the
+  # .env above was just created) instead of docker/.env — Compose's default
+  # project directory is the compose file's own folder, not the CWD.
+  docker compose -f docker/docker-compose.yml --project-directory . up -d postgres redis
 else
   echo "    Docker não encontrado — pulei esta etapa. Instale o Docker Desktop para rodar o ambiente completo."
 fi

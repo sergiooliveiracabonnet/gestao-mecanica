@@ -25,7 +25,10 @@ pnpm install
 
 Write-Host "==> Subindo serviços de infraestrutura (docker compose)..."
 if (Get-Command docker -ErrorAction SilentlyContinue) {
-    docker compose -f docker/docker-compose.yml up -d postgres redis
+    # --project-directory . makes Compose read ./.env (repo root, where the
+    # .env above was just created) instead of docker/.env - Compose's
+    # default project directory is the compose file's own folder, not the CWD.
+    docker compose -f docker/docker-compose.yml --project-directory . up -d postgres redis
 } else {
     Write-Host "    Docker não encontrado - pulei esta etapa. Instale o Docker Desktop para rodar o ambiente completo."
 }

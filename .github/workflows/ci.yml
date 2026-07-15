@@ -60,3 +60,27 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build
+
+  docker-smoke-test:
+    name: Docker images build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -f backend/Dockerfile -t oficina-backend:ci .
+
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile -t oficina-frontend:ci .
+
+      - name: Boot backend and check /health
+        run: |
+          docker run -d --name backend-smoke -p 3001:3001 oficina-backend:ci
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:3001/health && exit 0
+            sleep 2
+          done
+          echo "backend never became healthy"
+          docker logs backend-smoke
+          exit 1
