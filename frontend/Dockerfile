@@ -36,4 +36,8 @@ COPY --from=build /app/frontend/public ./frontend/public
 COPY --from=build /app/frontend/package.json ./frontend/package.json
 COPY --from=build /app/frontend/next.config.mjs ./frontend/next.config.mjs
 EXPOSE 3000
-CMD ["node_modules/.bin/next", "start", "frontend"]
+# next is a direct dependency of @oficina/frontend only, so pnpm places its
+# bin symlink at frontend/node_modules/.bin/next — NOT at the workspace
+# root's node_modules/.bin (root .bin only has hoisted/root-level bins like
+# turbo). Exec-form CMD does no PATH lookup, so the path must be exact.
+CMD ["frontend/node_modules/.bin/next", "start", "frontend"]

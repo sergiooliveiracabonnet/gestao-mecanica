@@ -84,3 +84,14 @@ jobs:
           echo "backend never became healthy"
           docker logs backend-smoke
           exit 1
+
+      - name: Boot frontend and check /
+        run: |
+          docker run -d --name frontend-smoke -p 3000:3000 oficina-frontend:ci
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:3000/ > /dev/null && exit 0
+            sleep 2
+          done
+          echo "frontend never became healthy"
+          docker logs frontend-smoke
+          exit 1
