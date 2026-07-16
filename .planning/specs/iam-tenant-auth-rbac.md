@@ -135,7 +135,7 @@ sem foreign keys físicas nem `CASCADE`.
 |---|---|---|
 | id | UUID PK | |
 | tenant_id | UUID | índice |
-| email | TEXT | único por `tenant_id` (índice composto) |
+| email | TEXT | **único globalmente** (não por tenant) — corrigido durante o build: `POST /auth/login` só recebe `{email, password}`, sem identificador de tenant; e-mail único por tenant tornaria o login ambíguo se a mesma pessoa/e-mail existisse em duas oficinas |
 | password_hash | TEXT | nullable até `accept-invite` ser concluído |
 | name | TEXT | |
 | role_id | UUID | FK lógica para `roles` |
@@ -247,8 +247,9 @@ Response 200: { items: [...], total, offset, limit, has_more }
 3. **Convite expirado ou já aceito** — `accept-invite` com token expirado
    ou cujo usuário já está `active` retorna erro claro, sem alterar estado.
 4. **Documento (CPF/CNPJ) ou e-mail duplicado** — signup com documento já
-   cadastrado, ou convite para e-mail já existente no mesmo tenant, retorna
-   erro de validação, não erro genérico 500.
+   cadastrado, ou convite para e-mail já existente em qualquer tenant
+   (e-mail é único globalmente, não por tenant), retorna erro de validação,
+   não erro genérico 500.
 5. **Rate limit excedido** — múltiplas tentativas de login/signup do mesmo
    IP em curto intervalo recebem 429, sem derrubar o serviço.
 6. **Usuário desabilitado ou soft-deleted tenta logar** — `status =

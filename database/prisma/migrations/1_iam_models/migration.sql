@@ -94,7 +94,7 @@ CREATE TABLE "audit_logs" (
 
 -- CreateIndex (regular)
 CREATE INDEX "users_tenant_id_idx" ON "users"("tenant_id");
-CREATE INDEX "users_tenant_id_email_idx" ON "users"("tenant_id", "email");
+CREATE INDEX "users_email_idx" ON "users"("email");
 CREATE INDEX "refresh_tokens_user_id_idx" ON "refresh_tokens"("user_id");
 CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
 CREATE UNIQUE INDEX "permissions_key_key" ON "permissions"("key");
@@ -102,7 +102,8 @@ CREATE UNIQUE INDEX "role_permissions_role_id_permission_id_key" ON "role_permis
 CREATE INDEX "audit_logs_tenant_id_idx" ON "audit_logs"("tenant_id");
 
 -- CreateIndex (partial unique — só entre registros ativos, para não travar
--- reuso de documento/e-mail depois de um soft delete; ver SCHEMA.md
--- "Index Strategy for Soft Deletes")
+-- reuso depois de um soft delete; ver SCHEMA.md "Index Strategy for Soft
+-- Deletes"). email é único GLOBALMENTE (não por tenant) — ver comentário no
+-- schema.prisma sobre o contrato de POST /auth/login.
 CREATE UNIQUE INDEX "idx_tenants_document_active" ON "tenants"("document") WHERE "deleted_at" IS NULL;
-CREATE UNIQUE INDEX "idx_users_tenant_email_active" ON "users"("tenant_id", "email") WHERE "deleted_at" IS NULL;
+CREATE UNIQUE INDEX "idx_users_email_active" ON "users"("email") WHERE "deleted_at" IS NULL;

@@ -285,7 +285,7 @@ só o scaffold básico (Tailwind, shadcn config, tema).
 
 **Data layer** (Phase 9, #29):
 - Insert/read/soft-delete de `Tenant`, `User`, `RefreshToken`
-- Unicidade de `document` (tenant) e `email` por `tenant_id`
+- Unicidade de `document` (tenant, escopo por tenant) e `email` (user, escopo **global** — corrigido durante o build, ver spec)
 
 **Business logic** (Phase 9, #30-31):
 - Signup: cria tenant+admin, rejeita documento inválido/duplicado, rejeita senha curta

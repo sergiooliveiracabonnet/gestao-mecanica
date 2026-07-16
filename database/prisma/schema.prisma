@@ -17,10 +17,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// document e (tenantId, email) do User NÃO usam @unique aqui de propósito:
+// document (Tenant) e email (User) NÃO usam @unique aqui de propósito:
 // unicidade real é um índice único PARCIAL (WHERE deleted_at IS NULL),
-// escrito à mão na migration, para não bloquear reuso de documento/e-mail
-// depois de um soft delete. Ver migrations/*_iam_models/migration.sql.
+// escrito à mão na migration, para não bloquear reuso depois de um soft
+// delete. Ver migrations/*_iam_models/migration.sql.
+//
+// email é único GLOBALMENTE (não por tenant): o contrato de POST /auth/login
+// (spec) recebe só { email, password }, sem identificador de tenant — se o
+// mesmo e-mail pudesse existir em tenants diferentes, o login seria
+// ambíguo. Uma pessoa que trabalha em duas oficinas precisa de e-mails
+// diferentes nesta versão do produto.
 model Tenant {
   id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name      String
@@ -51,7 +57,7 @@ model User {
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
 
   @@index([tenantId])
-  @@index([tenantId, email])
+  @@index([email])
   @@map("users")
 }
 
