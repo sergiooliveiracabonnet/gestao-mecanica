@@ -9,6 +9,8 @@ import { JwtConfigModule } from './shared/jwt/jwt-config.module';
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
 import { RolesGuard } from './shared/guards/roles.guard';
 import { TenantContextInterceptor } from './shared/interceptors/tenant-context.interceptor';
+import { QueueModule } from './shared/queue/queue.module';
+import { AuditLogModule } from './shared/audit-log/audit-log.module';
 // IamModule é importado aqui só na Phase 8 (controllers/wiring), quando
 // existir — Managers/Repositories/Services ainda não foram criados.
 
@@ -30,6 +32,8 @@ import { TenantContextInterceptor } from './shared/interceptors/tenant-context.i
     PrismaModule,
     TenantContextModule,
     JwtConfigModule,
+    QueueModule,
+    AuditLogModule,
     HealthModule,
   ],
   providers: [
