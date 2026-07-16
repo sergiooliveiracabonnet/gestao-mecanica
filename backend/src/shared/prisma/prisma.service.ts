@@ -5,7 +5,13 @@ import { tenantIsolationExtension } from './tenant-isolation.middleware';
 
 @Injectable()
 export class PrismaService implements OnModuleInit, OnModuleDestroy {
-  private readonly raw = new PrismaClient();
+  // Client SEM a extensão de isolamento — escape hatch explícito para as
+  // poucas queries que precisam ser intencionalmente cross-tenant mesmo
+  // dentro de uma requisição autenticada (ex: checar unicidade global de
+  // e-mail no convite, lookup de token de convite/refresh token). Use com
+  // cuidado: qualquer outra query em model tenant-scoped deve passar por
+  // `client`, nunca por `unscoped`.
+  readonly unscoped: PrismaClient = new PrismaClient();
 
   // A extensão só usa o componente `query` (intercepta chamadas, não
   // adiciona/remove métodos) — o shape público do client extendido é
@@ -16,14 +22,14 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   readonly client: PrismaClient;
 
   constructor(tenantContext: TenantContextService) {
-    this.client = this.raw.$extends(tenantIsolationExtension(tenantContext)) as unknown as PrismaClient;
+    this.client = this.unscoped.$extends(tenantIsolationExtension(tenantContext)) as unknown as PrismaClient;
   }
 
   async onModuleInit(): Promise<void> {
-    await this.raw.$connect();
+    await this.unscoped.$connect();
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.raw.$disconnect();
+    await this.unscoped.$disconnect();
   }
 }
