@@ -1,4 +1,6 @@
 // Barrel de tipos e DTOs compartilhados entre backend e frontend.
-// Vazio nesta feature (setup de infra) — os primeiros contratos reais
-// (Tenant, User, Auth) chegam na Feature 2 (IAM).
-export {};
+export * from './request/auth.request';
+export * from './request/user.request';
+export * from './response/auth.response';
+export * from './response/user.response';
+export * from './response/pagination.response';

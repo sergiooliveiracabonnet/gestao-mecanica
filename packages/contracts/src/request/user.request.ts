@@ -1,0 +1,22 @@
+import type { PageableRequest } from '../response/pagination.response';
+import type { UserRole, UserStatus } from '../response/user.response';
+
+export interface InviteUserRequest {
+  email: string;
+  name: string;
+  role: UserRole;
+}
+
+export interface AcceptInviteRequest {
+  inviteToken: string;
+  password: string;
+}
+
+export interface UserListFilters {
+  status?: UserStatus;
+  role?: UserRole;
+}
+
+export interface UserListRequest extends PageableRequest {
+  filters?: UserListFilters;
+}
