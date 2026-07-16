@@ -11,8 +11,7 @@ import { RolesGuard } from './shared/guards/roles.guard';
 import { TenantContextInterceptor } from './shared/interceptors/tenant-context.interceptor';
 import { QueueModule } from './shared/queue/queue.module';
 import { AuditLogModule } from './shared/audit-log/audit-log.module';
-// IamModule é importado aqui só na Phase 8 (controllers/wiring), quando
-// existir — Managers/Repositories/Services ainda não foram criados.
+import { IamModule } from './modules/iam/iam.module';
 
 @Module({
   imports: [
@@ -35,6 +34,7 @@ import { AuditLogModule } from './shared/audit-log/audit-log.module';
     QueueModule,
     AuditLogModule,
     HealthModule,
+    IamModule,
   ],
   providers: [
     // Ordem importa: ThrottlerGuard e JwtAuthGuard rodam antes do RolesGuard
