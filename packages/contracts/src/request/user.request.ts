@@ -1,10 +1,10 @@
 import type { PageableRequest } from '../response/pagination.response';
-import type { UserRole, UserStatus } from '../response/user.response';
+import type { InvitableRole, UserRole, UserStatus } from '../response/user.response';
 
 export interface InviteUserRequest {
   email: string;
   name: string;
-  role: UserRole;
+  role: InvitableRole;
 }
 
 export interface AcceptInviteRequest {

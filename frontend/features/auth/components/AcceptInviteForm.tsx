@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { extractErrorMessage } from '@/lib/api/client';
 import { useAcceptInvite } from '@/features/users/hooks/use-users';
 
 const acceptInviteSchema = z.object({
-  password: z.string().min(8, 'A senha deve ter pelo menos 8 caracteres'),
+  password: z.string().min(MIN_PASSWORD_LENGTH, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`),
 });
 
 type AcceptInviteFormValues = z.infer<typeof acceptInviteSchema>;

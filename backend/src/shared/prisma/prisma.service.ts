@@ -36,7 +36,17 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   // Operações multi-tabela (ex: signup cria Tenant + User) MUST usar
   // transaction — ver TRANSACTIONS.md. Repositories aceitam um `tx`
   // opcional exatamente para serem chamados de dentro deste callback.
+  //
+  // CRÍTICO: abre a transação em `this.client` (extendido), não em
+  // `this.unscoped`. Prisma Client Extensions só se aplicam ao `tx` se a
+  // transação for aberta no client que já carrega a extensão — abrir em
+  // `unscoped` produziria um `tx` sem isolamento de tenant nenhum, para
+  // qualquer future feature que rode uma escrita autenticada dentro de uma
+  // transação. Hoje isso é inócuo (signup roda sem tenant context, e passa
+  // tenantId explícito), mas seria uma armadilha de vazamento cross-tenant
+  // silenciosa assim que Clientes/Veículos/OS (Features 3-5) precisarem de
+  // uma transação autenticada.
   async transaction<T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T> {
-    return this.unscoped.$transaction((tx) => fn(tx as unknown as PrismaClient));
+    return this.client.$transaction((tx) => fn(tx as unknown as PrismaClient));
   }
 }

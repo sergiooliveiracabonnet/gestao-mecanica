@@ -107,3 +107,8 @@ CREATE INDEX "audit_logs_tenant_id_idx" ON "audit_logs"("tenant_id");
 -- schema.prisma sobre o contrato de POST /auth/login.
 CREATE UNIQUE INDEX "idx_tenants_document_active" ON "tenants"("document") WHERE "deleted_at" IS NULL;
 CREATE UNIQUE INDEX "idx_users_email_active" ON "users"("email") WHERE "deleted_at" IS NULL;
+
+-- CreateIndex (partial, para queries de limpeza/retenção — companion do
+-- índice único parcial acima; ver SCHEMA.md "Index Strategy for Soft Deletes")
+CREATE INDEX "idx_tenants_deleted" ON "tenants"("deleted_at") WHERE "deleted_at" IS NOT NULL;
+CREATE INDEX "idx_users_deleted" ON "users"("deleted_at") WHERE "deleted_at" IS NOT NULL;

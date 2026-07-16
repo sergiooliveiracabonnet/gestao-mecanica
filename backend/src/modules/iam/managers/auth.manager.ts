@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type {
   AuthResponse,
   LoginRequest,
@@ -30,8 +31,6 @@ export interface SignupInput {
   adminEmail: string;
   password: string;
 }
-
-const MIN_PASSWORD_LENGTH = 8;
 
 @Injectable()
 export class AuthManager {
@@ -122,6 +121,15 @@ export class AuthManager {
   async login(input: LoginRequest): Promise<AuthResponse> {
     const user = await this.userRepository.byEmail(input.email);
     if (!user || !user.passwordHash) {
+      // Edge Case 6 da spec: soft-deleted deve ter mensagem distinta de
+      // "e-mail ou senha inválidos" — mas só quando não existe nenhum
+      // usuário ATIVO com esse e-mail (checado acima); como o e-mail pode
+      // ser reciclado após soft delete, não dá pra assumir isso sempre que
+      // a busca ativa falhar, então essa é uma checagem best-effort.
+      const mostRecent = await this.userRepository.byEmailIncludingDeleted(input.email);
+      if (mostRecent?.deletedAt) {
+        throw new AppException(AppErrorCode.USER_DELETED, 'Esta conta foi desativada.', HttpStatus.FORBIDDEN);
+      }
       throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'E-mail ou senha inválidos.', HttpStatus.UNAUTHORIZED);
     }
 

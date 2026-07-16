@@ -65,6 +65,19 @@ export class UserRepository {
     });
   }
 
+  // Ignora deletedAt de propósito — usado só para distinguir "e-mail nunca
+  // existiu" de "existiu mas foi soft-deleted" no login (Edge Case 6 da
+  // spec), já que `byEmail` sozinho não permite essa distinção. Pega o
+  // registro mais recente: como o e-mail pode ser reciclado após um soft
+  // delete (índice único é parcial, só entre ativos), múltiplas linhas com
+  // o mesmo e-mail podem existir ao longo do tempo.
+  async byEmailIncludingDeleted(email: string) {
+    return this.prisma.unscoped.user.findFirst({
+      where: { email },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   // Global de propósito — accept-invite acontece sem o usuário autenticado.
   async byInviteTokenHash(inviteTokenHash: string) {
     return this.prisma.unscoped.user.findFirst({

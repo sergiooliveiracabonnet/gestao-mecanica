@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type {
   AcceptInviteRequest,
   AuthResponse,
@@ -92,8 +93,8 @@ export class UserManager {
       throw new AppException(AppErrorCode.INVITE_TOKEN_EXPIRED, 'Este convite expirou.', HttpStatus.BAD_REQUEST);
     }
 
-    if (request.password.length < 8) {
-      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'A senha deve ter pelo menos 8 caracteres.');
+    if (request.password.length < MIN_PASSWORD_LENGTH) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
     }
 
     const passwordHash = await this.passwordService.hash(request.password);

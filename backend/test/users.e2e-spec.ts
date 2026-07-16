@@ -76,14 +76,14 @@ describe('Users (e2e)', () => {
       .post('/api/v1/users/accept-invite')
       .send({ invite_token: inviteToken, password: 'supersecret1' });
 
-    expect(accept.status).toBe(201);
+    expect(accept.status).toBe(200);
     expect(accept.body.user.status).toBe('active');
     expect(accept.body.user.role).toBe('MECHANIC');
 
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: mechanicEmail, password: 'supersecret1' });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
 
     // Edge Case / RBAC: MECHANIC não tem permissão para convidar.
     const forbidden = await request(app.getHttpServer())
@@ -134,8 +134,19 @@ describe('Users (e2e)', () => {
       .set('Authorization', `Bearer ${admin.access_token}`)
       .send({ offset: 0, limit: 10 });
 
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(200);
     expect(response.body.total).toBeGreaterThanOrEqual(2); // admin + o convidado
     expect(response.body.items.every((item: { tenant_id: string }) => item.tenant_id === admin.tenant.id)).toBe(true);
+  });
+
+  it('rejects inviting a new ADMIN (privilege escalation guard)', async () => {
+    const admin = await signupAdmin(`noadmin-${Date.now()}`);
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/users/invite')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ email: `wannabe-admin-${Date.now()}@e2e-test.com`, name: 'X', role: 'ADMIN' });
+
+    expect(response.status).toBe(400);
   });
 });

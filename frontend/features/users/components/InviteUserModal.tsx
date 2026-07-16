@@ -12,10 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useInviteUser } from '../hooks/use-users';
 
+// ADMIN de propósito fora daqui: contas admin só nascem via signup
+// self-service — permitir convidar um ADMIN deixaria um Gerente promover
+// alguém ao papel mais alto do tenant. Ver INVITABLE_ROLES em contracts.
 const inviteSchema = z.object({
   email: z.string().email('Informe um e-mail válido'),
   name: z.string().min(1, 'Informe o nome'),
-  role: z.enum(['ADMIN', 'MANAGER', 'MECHANIC', 'FRONT_DESK']),
+  role: z.enum(['MANAGER', 'MECHANIC', 'FRONT_DESK']),
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
@@ -24,7 +27,6 @@ const ROLE_OPTIONS: Array<{ value: InviteFormValues['role']; label: string }> = 
   { value: 'MANAGER', label: 'Gerente' },
   { value: 'MECHANIC', label: 'Mecânico' },
   { value: 'FRONT_DESK', label: 'Recepção' },
-  { value: 'ADMIN', label: 'Admin' },
 ];
 
 interface InviteUserModalProps {

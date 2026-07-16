@@ -1,7 +1,6 @@
 import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type { LoginRequest, LogoutRequest, RefreshRequest, SignupRequest } from '@oficina/contracts';
-
-const MIN_PASSWORD_LENGTH = 8;
 
 export class SignupDto implements SignupRequest {
   @IsNotEmpty({ message: 'tenant_name is required' })

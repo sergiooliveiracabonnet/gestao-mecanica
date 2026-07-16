@@ -1,9 +1,8 @@
 import { Type } from 'class-transformer';
 import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, Max, Min, MinLength, ValidateNested } from 'class-validator';
-import { USER_ROLES, USER_STATUSES } from '@oficina/contracts';
+import { INVITABLE_ROLES, MIN_PASSWORD_LENGTH, USER_ROLES, USER_STATUSES } from '@oficina/contracts';
 import type { AcceptInviteRequest, InviteUserRequest, UserListFilters, UserListRequest } from '@oficina/contracts';
 
-const MIN_PASSWORD_LENGTH = 8;
 const MAX_LIST_LIMIT = 100;
 const DEFAULT_LIST_LIMIT = 100;
 
@@ -14,7 +13,8 @@ export class InviteUserDto implements InviteUserRequest {
   @IsNotEmpty({ message: 'name is required' })
   name!: string;
 
-  @IsIn(USER_ROLES, { message: 'role must be one of ADMIN, MANAGER, MECHANIC, FRONT_DESK' })
+  // ADMIN de propósito fora da lista — ver INVITABLE_ROLES em contracts.
+  @IsIn(INVITABLE_ROLES, { message: 'role must be one of MANAGER, MECHANIC, FRONT_DESK' })
   role!: InviteUserRequest['role'];
 }
 

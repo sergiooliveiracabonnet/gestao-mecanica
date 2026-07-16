@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthResponse, InviteUserResponse, PaginationData, UserListItemResponse } from '@oficina/contracts';
 import { Public } from '../../../shared/decorators/public.decorator';
@@ -21,12 +21,14 @@ export class UsersController {
 
   @Public()
   @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
   @Post('accept-invite')
   async acceptInvite(@Body() body: AcceptInviteDto): Promise<AuthResponse> {
     return this.userManager.acceptInvite(body);
   }
 
   @Roles('ADMIN', 'MANAGER')
+  @HttpCode(HttpStatus.OK)
   @Post('list')
   async list(@Body() body: UserListDto): Promise<PaginationData<UserListItemResponse>> {
     return this.userManager.list(body);

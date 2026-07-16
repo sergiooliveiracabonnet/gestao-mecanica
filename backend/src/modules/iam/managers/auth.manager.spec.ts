@@ -16,6 +16,7 @@ function buildManager() {
     insert: jest.fn(),
     byId: jest.fn(),
     byEmail: jest.fn(),
+    byEmailIncludingDeleted: jest.fn(),
     byInviteTokenHash: jest.fn(),
     update: jest.fn(),
     listByTenant: jest.fn(),
@@ -248,6 +249,16 @@ describe('AuthManager', () => {
       await expect(
         deps.manager.login({ email: 'admin@oficina.com', password: 'supersecret1' }),
       ).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+    });
+
+    it('rejects a soft-deleted user with a distinct message (Edge Case 6)', async () => {
+      const deps = buildManager();
+      deps.userRepository.byEmail.mockResolvedValue(null);
+      deps.userRepository.byEmailIncludingDeleted.mockResolvedValue({ ...baseUser, deletedAt: new Date() });
+
+      await expect(
+        deps.manager.login({ email: 'admin@oficina.com', password: 'supersecret1' }),
+      ).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN, code: 'USER_DELETED' });
     });
   });
 

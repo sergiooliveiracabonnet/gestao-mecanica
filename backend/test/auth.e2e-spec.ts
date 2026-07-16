@@ -81,12 +81,12 @@ describe('Auth (e2e)', () => {
     const login = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: payload.admin_email, password: payload.password });
-    expect(login.status).toBe(201);
+    expect(login.status).toBe(200);
 
     const refresh = await request(app.getHttpServer())
       .post('/api/v1/auth/refresh')
       .send({ refresh_token: login.body.refresh_token });
-    expect(refresh.status).toBe(201);
+    expect(refresh.status).toBe(200);
     expect(refresh.body.access_token).toBeDefined();
 
     // Edge Case 2: o refresh token antigo (já rotacionado) não pode ser reutilizado.

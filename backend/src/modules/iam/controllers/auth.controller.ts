@@ -19,12 +19,14 @@ export class AuthController {
 
   @Public()
   @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() body: LoginDto): Promise<AuthResponse> {
     return this.authManager.login(body);
   }
 
   @Public()
+  @HttpCode(HttpStatus.OK)
   @Post('refresh')
   async refresh(@Body() body: RefreshDto): Promise<RefreshResponse> {
     return this.authManager.refresh(body.refreshToken);

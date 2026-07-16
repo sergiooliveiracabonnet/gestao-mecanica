@@ -5,7 +5,25 @@ import { TenantContextService } from '../tenant-context/tenant-context.service';
 // Vehicle, ServiceOrder...), inclua o nome aqui.
 const TENANT_SCOPED_MODELS = new Set(['User', 'AuditLog']);
 
-const READ_OPERATIONS = new Set(['findFirst', 'findFirstOrThrow', 'findMany', 'count', 'aggregate', 'groupBy']);
+// findFirst busca uma linha específica (normalmente por id/token hash) e é
+// usada de propósito em fluxos sem autenticação ainda (refresh, logout —
+// ver AuthManager). Nesses casos, sem contexto de tenant, a query passa
+// sem filtro — aceitável porque o resultado já é uma linha só, localizada
+// por uma chave que não colide entre tenants (UUID).
+const SINGLE_ROW_READS = new Set(['findFirst', 'findFirstOrThrow']);
+
+// findMany/count/aggregate/groupBy retornam um CONJUNTO — sem filtro de
+// tenant, vazam dados de todos os tenants de uma vez. No código atual só
+// são chamadas em rotas autenticadas (ex: UserRepository.listByTenant), e
+// por isso, ao contrário de SINGLE_ROW_READS, falham em vez de rodar sem
+// filtro se não houver contexto — é melhor quebrar alto (500) do que
+// silenciosamente devolver a lista de todo mundo.
+const UNBOUNDED_READS = new Set(['findMany', 'count', 'aggregate', 'groupBy']);
+
+// updateMany aqui sempre roda com um `id` explícito no where (ver
+// UserRepository.update) — inclusive em fluxos sem tenant context ainda
+// (accept-invite). Mesmo raciocínio de SINGLE_ROW_READS: aceitável sem
+// filtro quando não há contexto.
 const WRITE_MANY_OPERATIONS = new Set(['updateMany', 'deleteMany']);
 const CREATE_OPERATIONS = new Set(['create']);
 
@@ -32,11 +50,18 @@ export function tenantIsolationExtension(tenantContext: TenantContextService) {
           }
 
           const tenantId = tenantContext.getStore()?.tenantId;
+
           if (!tenantId) {
+            if (UNBOUNDED_READS.has(operation)) {
+              throw new Error(
+                `tenant-isolation: "${model}.${operation}" foi chamado sem um tenant context ativo — ` +
+                  'esta operação retorna um conjunto sem limite e nunca deve rodar sem filtro de tenant.',
+              );
+            }
             return query(args);
           }
 
-          if (READ_OPERATIONS.has(operation) || WRITE_MANY_OPERATIONS.has(operation)) {
+          if (SINGLE_ROW_READS.has(operation) || UNBOUNDED_READS.has(operation) || WRITE_MANY_OPERATIONS.has(operation)) {
             args.where = { ...((args.where as Record<string, unknown>) ?? {}), tenantId };
           } else if (CREATE_OPERATIONS.has(operation)) {
             args.data = { ...((args.data as Record<string, unknown>) ?? {}), tenantId };
