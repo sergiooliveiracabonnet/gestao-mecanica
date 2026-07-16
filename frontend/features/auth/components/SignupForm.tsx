@@ -111,7 +111,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>Senha</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="Mínimo 8 caracteres" {...field} />
+                <Input type="password" placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

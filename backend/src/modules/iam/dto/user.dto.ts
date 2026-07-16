@@ -22,7 +22,7 @@ export class AcceptInviteDto implements AcceptInviteRequest {
   @IsNotEmpty({ message: 'invite_token is required' })
   inviteToken!: string;
 
-  @MinLength(MIN_PASSWORD_LENGTH, { message: 'password must be at least 8 characters' })
+  @MinLength(MIN_PASSWORD_LENGTH, { message: `password must be at least ${MIN_PASSWORD_LENGTH} characters` })
   password!: string;
 }
 

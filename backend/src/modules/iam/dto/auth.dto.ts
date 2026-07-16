@@ -15,7 +15,7 @@ export class SignupDto implements SignupRequest {
   @IsEmail({}, { message: 'admin_email must be a valid email' })
   adminEmail!: string;
 
-  @MinLength(MIN_PASSWORD_LENGTH, { message: 'password must be at least 8 characters' })
+  @MinLength(MIN_PASSWORD_LENGTH, { message: `password must be at least ${MIN_PASSWORD_LENGTH} characters` })
   password!: string;
 }
 
