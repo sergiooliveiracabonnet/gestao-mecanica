@@ -36,7 +36,7 @@ Arquitetura de referência: `docs/superpowers/specs/2026-07-14-arquitetura-mvp-d
 | # | Feature | Status | Spec | Plan | Depends On |
 |---|---------|--------|------|------|------------|
 | 1 | Setup Monorepo & Infra Base | done | [spec](../specs/setup-monorepo-infra-base.md) | [plan](../plans/setup-monorepo-infra-base.md) | — |
-| 2 | IAM (Tenant, Auth, RBAC fixo) | todo | [spec](../specs/iam-tenant-auth-rbac.md) | [plan](../plans/iam-tenant-auth-rbac.md) | #1 |
+| 2 | IAM (Tenant, Auth, RBAC fixo) | done | [spec](../specs/iam-tenant-auth-rbac.md) | [plan](../plans/iam-tenant-auth-rbac.md) | #1 |
 | 3 | Clientes (CRUD PF/PJ) | todo | — | — | #1, #2 |
 | 4 | Veículos (CRUD vinculado a Cliente) | todo | — | — | #1, #2, #3 |
 | 5 | Ordem de Serviço | todo | — | — | #1, #2, #3, #4 |
@@ -92,3 +92,12 @@ auditável.
 - Módulos pós-MVP (orçamento, agenda, estoque, financeiro, CRM, dashboard,
   integrações, RBAC granular, MFA) ficam para epics futuros — ver seção 12 da
   spec de arquitetura.
+- **Pendência da Feature 2 antes de começar a Feature 3**: a migration
+  `database/prisma/migrations/1_iam_models/` foi escrita à mão (sem Docker
+  disponível na sessão que implementou) e nunca rodou contra um Postgres de
+  verdade. Antes de escrever a Feature 3 (Clientes), rodar localmente:
+  `docker compose up` → `pnpm --filter @oficina/database run migrate:deploy`
+  → `pnpm --filter @oficina/database run seed` → `pnpm run test:e2e` no
+  backend (repositories, isolamento multi-tenant, controllers) → Playwright
+  no frontend. Corrigir qualquer divergência encontrada antes de empilhar
+  mais schema em cima.
