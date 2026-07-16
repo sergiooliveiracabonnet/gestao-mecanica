@@ -1,7 +1,12 @@
 // Configuração base do Prisma para o Oficina SaaS.
-// Nenhum model de domínio ainda — Tenant, User, Customer, Vehicle, ServiceOrder
-// etc. chegam nas Features 2-5, cada uma adicionando os models de seu escopo.
+// Feature 2 (IAM) adiciona os primeiros models de domínio: Tenant, User,
+// RefreshToken, Role, Permission, RolePermission, AuditLog.
 // Ver docs/superpowers/specs/2026-07-14-arquitetura-mvp-design.md seção 5.
+//
+// Convenções: snake_case no banco (via @map/@@map), TEXT (String sem
+// @db.VarChar), UUID via uuid_generate_v4(), TIMESTAMPTZ em UTC, soft delete
+// (deleted_at), sem foreign keys físicas — integridade validada na camada de
+// aplicação (Manager).
 
 generator client {
   provider = "prisma-client-js"
@@ -10,4 +15,95 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// document e (tenantId, email) do User NÃO usam @unique aqui de propósito:
+// unicidade real é um índice único PARCIAL (WHERE deleted_at IS NULL),
+// escrito à mão na migration, para não bloquear reuso de documento/e-mail
+// depois de um soft delete. Ver migrations/*_iam_models/migration.sql.
+model Tenant {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name      String
+  document  String
+  plan      String    @default("free")
+  status    String    @default("active")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@map("tenants")
+}
+
+model User {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  email           String
+  passwordHash    String?   @map("password_hash")
+  name            String
+  roleId          String    @map("role_id") @db.Uuid
+  status          String    @default("invited")
+  inviteTokenHash String?   @map("invite_token_hash")
+  inviteExpiresAt DateTime? @map("invite_expires_at") @db.Timestamptz
+  mfaEnabled      Boolean   @default(false) @map("mfa_enabled")
+  mfaSecret       String?   @map("mfa_secret")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId])
+  @@index([tenantId, email])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  userAgent String?   @map("user_agent")
+  ip        String?   @db.Inet
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Role {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  key         String @unique
+  description String
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  action    String
+  entity    String
+  entityId  String   @map("entity_id") @db.Uuid
+  metadata  Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId])
+  @@map("audit_logs")
 }

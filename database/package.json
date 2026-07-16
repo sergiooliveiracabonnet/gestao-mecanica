@@ -5,16 +5,23 @@
   "scripts": {
     "build": "echo \"no build step for database package\"",
     "lint": "pnpm run validate",
-    "typecheck": "echo \"no typecheck configured for database yet\"",
+    "typecheck": "tsc --noEmit",
     "test": "echo \"no tests yet\"",
     "generate": "prisma generate --schema=./prisma/schema.prisma",
     "migrate:dev": "prisma migrate dev --schema=./prisma/schema.prisma",
     "migrate:deploy": "prisma migrate deploy --schema=./prisma/schema.prisma",
+    "seed": "prisma db seed --schema=./prisma/schema.prisma",
     "validate": "cross-env DATABASE_URL=postgresql://validate:validate@localhost:5432/validate prisma validate --schema=./prisma/schema.prisma"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "devDependencies": {
+    "@types/node": "^22.10.2",
     "cross-env": "^7.0.3",
-    "prisma": "^6.1.0"
+    "prisma": "^6.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0"

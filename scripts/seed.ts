@@ -1,8 +1,7 @@
-// Placeholder de seed — sem dados ainda, porque nenhum model de domínio
-// existe nesta feature. A Feature 2 (IAM) substitui este arquivo pelo seed
-// real dos papéis fixos (Admin, Gerente, Mecânico, Recepção).
-async function main() {
-  console.log('Nenhum seed a rodar ainda — placeholder da Feature 1.');
-}
+// Atalho de conveniência na raiz do repo. A implementação real do seed vive
+// em `database/prisma/seed.ts` (convenção do Prisma: `prisma db seed` exige
+// que o script fique ao lado do schema.prisma para resolver `@prisma/client`
+// corretamente a partir de `database/node_modules`).
+import { execSync } from 'node:child_process';
 
-main();
+execSync('pnpm --filter @oficina/database run seed', { stdio: 'inherit' });
