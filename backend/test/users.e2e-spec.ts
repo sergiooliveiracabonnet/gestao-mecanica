@@ -1,8 +1,10 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/bootstrap';
 import { PrismaService } from '../src/shared/prisma/prisma.service';
+import { generateValidCpf } from './utils/generate-cpf';
 
 // E2E real — mesma exigência de infra do auth.e2e-spec.ts.
 describe('Users (e2e)', () => {
@@ -12,8 +14,9 @@ describe('Users (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    // Ver comentário equivalente em auth.e2e-spec.ts.
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureApp(app);
     await app.init();
     prisma = app.get(PrismaService);
   });
@@ -31,7 +34,8 @@ describe('Users (e2e)', () => {
       .post('/api/v1/auth/signup')
       .send({
         tenant_name: `Oficina Users E2E ${suffix}`,
-        tenant_document: '11444777000161',
+        // Documento único por chamada — ver comentário equivalente em auth.e2e-spec.ts.
+        tenant_document: generateValidCpf(),
         admin_name: 'Admin E2E',
         admin_email: `admin-users-${suffix}@e2e-test.com`,
         password: 'supersecret1',

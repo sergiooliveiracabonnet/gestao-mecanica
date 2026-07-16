@@ -17,7 +17,11 @@ import { JwtModule } from '@nestjs/jwt';
         signOptions: {
           // Segundos (número), não string tipo "15m" — evita briga de tipos
           // com o union `StringValue` da lib `ms` usada por @nestjs/jwt.
-          expiresIn: config.get<number>('JWT_ACCESS_TOKEN_TTL_SECONDS', 900),
+          // ConfigService.get<number>() não converte o valor em runtime —
+          // .env sempre entrega string, então sem o Number() aqui o
+          // jsonwebtoken/ms interpretava "900" como 900ms (não 900s) e o
+          // token nascia expirado.
+          expiresIn: Number(config.get<string>('JWT_ACCESS_TOKEN_TTL_SECONDS', '900')),
         },
       }),
     }),

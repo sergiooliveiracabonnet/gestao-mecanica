@@ -1,4 +1,4 @@
-# Setup local do Oficina SaaS — PowerShell.
+﻿# Setup local do Oficina SaaS — PowerShell.
 $ErrorActionPreference = "Stop"
 
 $RootDir = Split-Path -Parent $PSScriptRoot

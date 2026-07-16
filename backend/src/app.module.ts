@@ -23,8 +23,12 @@ import { IamModule } from './modules/iam/iam.module';
       useFactory: (config: ConfigService) => ({
         throttlers: [
           {
-            ttl: config.get<number>('THROTTLE_TTL', 60000),
-            limit: config.get<number>('THROTTLE_LIMIT', 100),
+            // ConfigService.get<number>() não converte em runtime — .env
+            // sempre entrega string. Sem o Number() aqui, `ttl` como string
+            // quebra a aritmética interna do ThrottlerStorageService
+            // (Date.now() + "60000" vira concatenação, não soma).
+            ttl: Number(config.get<string>('THROTTLE_TTL', '60000')),
+            limit: Number(config.get<string>('THROTTLE_LIMIT', '100')),
           },
         ],
       }),

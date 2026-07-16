@@ -1,8 +1,11 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/bootstrap';
 import { PrismaService } from '../src/shared/prisma/prisma.service';
+import { generateValidCpf } from './utils/generate-cpf';
 
 // E2E real (stack HTTP completa) — precisa do banco migrado + seed dos
 // papéis fixos rodados (o seed cria o role ADMIN que o signup depende de
@@ -14,10 +17,23 @@ describe('Auth (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+    // bodyParser: false + configureApp() precisam espelhar exatamente o
+    // bootstrap de src/main.ts — senão os payloads snake_case destes testes
+    // (o formato real que o frontend envia) nunca passam pelo
+    // snakeToCamelMiddleware e os testes exercitam um caminho que a app
+    // real não tem.
+    app = moduleFixture.createNestApplication({ bodyParser: false });
+    configureApp(app);
     await app.init();
     prisma = app.get(PrismaService);
+  });
+
+  beforeEach(() => {
+    // AUTH_THROTTLE (5 req/60s) é por rota, mas todo request de teste vem do
+    // mesmo IP — sem isso, testes anteriores que chamam signup/login
+    // "gastam" o mesmo orçamento do endpoint e o próximo teste esbarra em
+    // 429 mesmo sem ter nada a ver com o teste de rate limit dedicado.
+    (app.get(ThrottlerStorage) as ThrottlerStorageService).storage.clear();
   });
 
   afterAll(async () => {
@@ -31,7 +47,9 @@ describe('Auth (e2e)', () => {
   function signupPayload(suffix: string) {
     return {
       tenant_name: `Oficina E2E ${suffix}`,
-      tenant_document: '11444777000161',
+      // Documento único por chamada — um valor fixo colide (unique
+      // constraint) assim que mais de um teste da suíte faz signup.
+      tenant_document: generateValidCpf(),
       admin_name: 'Admin E2E',
       admin_email: `admin-${suffix}@e2e-test.com`,
       password: 'supersecret1',
