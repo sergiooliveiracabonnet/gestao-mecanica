@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AcceptInviteRequest, InviteUserRequest, UserListRequest } from '@oficina/contracts';
+import { useAuthStore } from '@/stores/auth-store';
 import { usersApi } from '../api/users-api';
 
 const USERS_LIST_KEY = 'users-list';
@@ -18,8 +19,13 @@ export function useInviteUser() {
 }
 
 export function useAcceptInvite() {
+  const setSession = useAuthStore((state) => state.setSession);
+
   return useMutation({
     mutationFn: (request: AcceptInviteRequest) => usersApi.acceptInvite(request),
+    onSuccess: (data) => {
+      setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+    },
   });
 }
 

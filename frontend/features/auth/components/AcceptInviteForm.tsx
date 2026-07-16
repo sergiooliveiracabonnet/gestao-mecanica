@@ -1,0 +1,65 @@
+'use client';
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { extractErrorMessage } from '@/lib/api/client';
+import { useAcceptInvite } from '@/features/users/hooks/use-users';
+
+const acceptInviteSchema = z.object({
+  password: z.string().min(8, 'A senha deve ter pelo menos 8 caracteres'),
+});
+
+type AcceptInviteFormValues = z.infer<typeof acceptInviteSchema>;
+
+export function AcceptInviteForm({ inviteToken }: { inviteToken: string }) {
+  const router = useRouter();
+  const acceptInvite = useAcceptInvite();
+  const form = useForm<AcceptInviteFormValues>({
+    resolver: zodResolver(acceptInviteSchema),
+    defaultValues: { password: '' },
+  });
+
+  function onSubmit(values: AcceptInviteFormValues) {
+    acceptInvite.mutate(
+      { inviteToken, password: values.password },
+      {
+        onSuccess: () => {
+          toast.success('Conta ativada! Bem-vindo(a).');
+          router.push('/users');
+        },
+        onError: (error) => {
+          toast.error(extractErrorMessage(error, 'Não foi possível aceitar o convite.'));
+        },
+      },
+    );
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Crie sua senha</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="Mínimo 8 caracteres" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" disabled={acceptInvite.isPending} className="mt-2">
+          {acceptInvite.isPending ? 'Ativando conta...' : 'Ativar minha conta'}
+        </Button>
+      </form>
+    </Form>
+  );
+}
