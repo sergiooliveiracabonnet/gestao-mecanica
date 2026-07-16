@@ -32,4 +32,11 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.unscoped.$disconnect();
   }
+
+  // Operações multi-tabela (ex: signup cria Tenant + User) MUST usar
+  // transaction — ver TRANSACTIONS.md. Repositories aceitam um `tx`
+  // opcional exatamente para serem chamados de dentro deste callback.
+  async transaction<T>(fn: (tx: PrismaClient) => Promise<T>): Promise<T> {
+    return this.unscoped.$transaction((tx) => fn(tx as unknown as PrismaClient));
+  }
 }

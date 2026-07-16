@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PrismaClient } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateTenantInput {
@@ -12,8 +13,11 @@ export interface CreateTenantInput {
 export class TenantRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async insert(input: CreateTenantInput) {
-    return this.prisma.unscoped.tenant.create({
+  // `tx` opcional: usado pelo AuthManager.signup para rodar tenant+user na
+  // mesma transação.
+  async insert(input: CreateTenantInput, tx?: PrismaClient) {
+    const db = tx ?? this.prisma.unscoped;
+    return db.tenant.create({
       data: {
         name: input.name,
         document: input.document,

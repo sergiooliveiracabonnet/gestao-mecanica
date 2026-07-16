@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { PrismaClient } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateUserInput {
@@ -31,9 +32,11 @@ export class UserRepository {
   // Passa por `client`: se houver tenant context ativo (convite feito por um
   // Admin autenticado), a extensão injeta o tenant_id do Admin no `create` —
   // exatamente o comportamento desejado. No signup (sem context ainda), o
-  // Manager passa `tenantId` explicitamente no input.
-  async insert(input: CreateUserInput) {
-    return this.prisma.client.user.create({
+  // Manager passa `tenantId` explicitamente no input. `tx` opcional: usado
+  // pelo AuthManager.signup para rodar tenant+user na mesma transação.
+  async insert(input: CreateUserInput, tx?: PrismaClient) {
+    const db = tx ?? this.prisma.client;
+    return db.user.create({
       data: {
         tenantId: input.tenantId,
         email: input.email,
