@@ -36,7 +36,7 @@ Arquitetura de referência: `docs/superpowers/specs/2026-07-14-arquitetura-mvp-d
 | # | Feature | Status | Spec | Plan | Depends On |
 |---|---------|--------|------|------|------------|
 | 1 | Setup Monorepo & Infra Base | done | [spec](../specs/setup-monorepo-infra-base.md) | [plan](../plans/setup-monorepo-infra-base.md) | — |
-| 2 | IAM (Tenant, Auth, RBAC fixo) | todo | — | — | #1 |
+| 2 | IAM (Tenant, Auth, RBAC fixo) | todo | [spec](../specs/iam-tenant-auth-rbac.md) | [plan](../plans/iam-tenant-auth-rbac.md) | #1 |
 | 3 | Clientes (CRUD PF/PJ) | todo | — | — | #1, #2 |
 | 4 | Veículos (CRUD vinculado a Cliente) | todo | — | — | #1, #2, #3 |
 | 5 | Ordem de Serviço | todo | — | — | #1, #2, #3, #4 |
