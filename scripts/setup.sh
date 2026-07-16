@@ -28,8 +28,28 @@ if command -v docker >/dev/null 2>&1; then
   # .env above was just created) instead of docker/.env — Compose's default
   # project directory is the compose file's own folder, not the CWD.
   docker compose -f docker/docker-compose.yml --project-directory . up -d postgres redis
+
+  echo "==> Aguardando Postgres ficar pronto..."
+  ready=0
+  for i in $(seq 1 15); do
+    if docker compose -f docker/docker-compose.yml --project-directory . exec -T postgres pg_isready -U oficina >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
+    sleep 2
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "    Postgres não ficou pronto a tempo — verifique 'docker compose logs postgres'."
+    exit 1
+  fi
+
+  echo "==> Rodando migrations (Feature 2: IAM)..."
+  pnpm --filter @oficina/database run migrate:deploy
+
+  echo "==> Rodando seed (papéis fixos ADMIN/MANAGER/MECHANIC/FRONT_DESK)..."
+  pnpm --filter @oficina/database run seed
 else
-  echo "    Docker não encontrado — pulei esta etapa. Instale o Docker Desktop para rodar o ambiente completo."
+  echo "    Docker não encontrado — pulei infra/migrations/seed. Instale o Docker Desktop para rodar o ambiente completo."
 fi
 
 echo "==> Setup concluído. Rode 'pnpm turbo run dev' para subir backend e frontend."
