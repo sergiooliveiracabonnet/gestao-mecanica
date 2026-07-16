@@ -9,6 +9,7 @@ import { JwtConfigModule } from './shared/jwt/jwt-config.module';
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
 import { RolesGuard } from './shared/guards/roles.guard';
 import { TenantContextInterceptor } from './shared/interceptors/tenant-context.interceptor';
+import { CaseConversionInterceptor } from './shared/interceptors/case-conversion.interceptor';
 import { QueueModule } from './shared/queue/queue.module';
 import { AuditLogModule } from './shared/audit-log/audit-log.module';
 import { IamModule } from './modules/iam/iam.module';
@@ -45,6 +46,8 @@ import { IamModule } from './modules/iam/iam.module';
     // Interceptors rodam depois dos guards no pipeline do Nest — por isso o
     // TenantContextInterceptor (que lê request.user) é seguro aqui.
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
+    // Converte toda resposta de sucesso para snake_case (NAMING_CONVENTIONS.md).
+    { provide: APP_INTERCEPTOR, useClass: CaseConversionInterceptor },
   ],
 })
 export class AppModule {}
