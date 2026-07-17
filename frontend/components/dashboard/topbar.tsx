@@ -5,6 +5,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 
 const PAGE_META: Record<string, { title: string; description: string }> = {
   '/customers': { title: 'Clientes', description: 'Gerencie os clientes da sua oficina.' },
+  '/vehicles': { title: 'Veículos', description: 'Gerencie os veículos cadastrados da sua oficina.' },
   '/users': { title: 'Usuários', description: 'Gerencie quem tem acesso à sua oficina.' },
 };
 
