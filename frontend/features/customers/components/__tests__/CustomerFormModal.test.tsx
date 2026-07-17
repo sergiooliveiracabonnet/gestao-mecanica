@@ -5,9 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CustomerListItemResponse } from '@oficina/contracts';
 import { CustomerFormModal } from '../CustomerFormModal';
 import { customersApi } from '../../api/customers-api';
+import { serviceOrdersApi } from '../../../service-orders/api/service-orders-api';
 
 vi.mock('../../api/customers-api', () => ({
   customersApi: { create: vi.fn(), update: vi.fn() },
+}));
+
+vi.mock('../../../service-orders/api/service-orders-api', () => ({
+  serviceOrdersApi: { list: vi.fn() },
 }));
 
 const { toastMock } = vi.hoisted(() => ({
@@ -31,9 +36,12 @@ const editingCustomer: CustomerListItemResponse = {
   createdAt: '2026-01-01T00:00:00Z',
 };
 
+const editingCompanyCustomer: CustomerListItemResponse = { ...editingCustomer, id: 'c2', type: 'PJ', name: 'Oficina LTDA' };
+
 describe('CustomerFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(serviceOrdersApi.list).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 20, hasMore: false });
   });
 
   it('shows type/document fields in create mode', () => {
@@ -49,6 +57,17 @@ describe('CustomerFormModal', () => {
     expect(screen.queryByLabelText(/cpf ou cnpj/i)).not.toBeInTheDocument();
     expect(screen.getByDisplayValue('João da Silva')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument();
+  });
+
+  it('shows RG for a PF customer and Inscrição Estadual for a PJ customer', () => {
+    const { unmount } = renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
+    expect(screen.getByLabelText(/^rg/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/inscrição estadual/i)).not.toBeInTheDocument();
+    unmount();
+
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCompanyCustomer} />);
+    expect(screen.getByLabelText(/inscrição estadual/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^rg/i)).not.toBeInTheDocument();
   });
 
   it('shows validation errors when submitted empty in create mode', async () => {
@@ -131,5 +150,84 @@ describe('CustomerFormModal', () => {
       ),
     );
     expect(customersApi.update).not.toHaveBeenCalledWith(expect.objectContaining({ type: expect.anything() }));
+  });
+
+  it('keeps values entered in one tab after switching to another and back (Edge Case 5)', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+
+    await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
+
+    await user.click(screen.getByRole('tab', { name: /contato/i }));
+    await user.type(screen.getByLabelText(/^nome \(opcional\)$/i), 'José Souza');
+
+    await user.click(screen.getByRole('tab', { name: /dados gerais/i }));
+    expect(screen.getByLabelText(/^nome$/i)).toHaveValue('Maria Souza');
+
+    await user.click(screen.getByRole('tab', { name: /contato/i }));
+    expect(screen.getByLabelText(/^nome \(opcional\)$/i)).toHaveValue('José Souza');
+  });
+
+  it('submits contact and preference fields when filled', async () => {
+    vi.mocked(customersApi.create).mockResolvedValue({ customer: { ...editingCustomer, id: 'new-id' } });
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+
+    await user.type(screen.getByLabelText(/cpf ou cnpj/i), '11144477735');
+    await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
+    await user.type(screen.getByLabelText(/telefone/i), '11988887777');
+
+    await user.click(screen.getByRole('tab', { name: /contato/i }));
+    await user.type(screen.getByLabelText(/^nome \(opcional\)$/i), 'José Souza');
+    await user.type(screen.getByLabelText(/relação/i), 'Cônjuge');
+
+    await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+
+    await waitFor(() =>
+      expect(customersApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({ secondaryContactName: 'José Souza', secondaryContactRelation: 'Cônjuge' }),
+      ),
+    );
+  });
+
+  it('disables the Histórico tab content in create mode without calling the API', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+
+    await user.click(screen.getByRole('tab', { name: /histórico/i }));
+
+    expect(await screen.findByText(/disponível depois de salvar o cliente/i)).toBeInTheDocument();
+    expect(serviceOrdersApi.list).not.toHaveBeenCalled();
+  });
+
+  it('loads the service order history in edit mode', async () => {
+    vi.mocked(serviceOrdersApi.list).mockResolvedValue({
+      items: [
+        {
+          id: 'so-1',
+          tenantId: 't1',
+          customerId: 'c1',
+          customerName: 'João da Silva',
+          vehicleId: 'v1',
+          vehicleBrand: 'Fiat',
+          vehicleModel: 'Uno',
+          vehiclePlate: 'ABC1D23',
+          status: 'DELIVERED',
+          openedAt: '2026-01-01T00:00:00Z',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ],
+      total: 1,
+      offset: 0,
+      limit: 20,
+      hasMore: false,
+    });
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
+
+    await user.click(screen.getByRole('tab', { name: /histórico/i }));
+
+    await waitFor(() => expect(serviceOrdersApi.list).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'c1' })));
+    expect(await screen.findByText(/Fiat Uno/i)).toBeInTheDocument();
   });
 });
