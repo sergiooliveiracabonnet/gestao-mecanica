@@ -12,11 +12,25 @@ function checkDigit(base: string, weights: number[]): number {
   return remainder < 2 ? 0 : 11 - remainder;
 }
 
-let counter = 0;
+function randomDigits(length: number): string {
+  let digits = '';
+  for (let i = 0; i < length; i++) {
+    digits += Math.floor(Math.random() * 10).toString();
+  }
+  return digits;
+}
 
 export function generateValidCpf(): string {
-  counter += 1;
-  const base9 = String((Date.now() + counter) % 900000000 + 100000000).slice(0, 9);
+  // Base9 puramente aleatória (1 bilhão de combinações) em vez de
+  // Date.now()+counter — cada arquivo de teste e2e roda num processo/módulo
+  // Jest separado com seu próprio `counter` zerado, então dois arquivos
+  // chamando isso no mesmo milissegundo geravam o MESMO CPF, colidindo no
+  // unique constraint de `document` de forma intermitente (flake real,
+  // reproduzido rodando a suíte completa).
+  let base9 = randomDigits(9);
+  while (/^(\d)\1{8}$/.test(base9)) {
+    base9 = randomDigits(9); // evita rejeição por "dígito único repetido" do validador
+  }
   const digit1 = checkDigit(base9, CPF_DIGIT1_WEIGHTS);
   const digit2 = checkDigit(base9 + digit1, CPF_DIGIT2_WEIGHTS);
   return `${base9}${digit1}${digit2}`;
