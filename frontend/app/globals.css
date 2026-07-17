@@ -85,6 +85,11 @@
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
+  /* Bug pré-existente: nada aplicava a fonte carregada por next/font em
+     lugar nenhum — --font-sans/--font-inter resolvia certo, mas o
+     navegador caía no serif padrão do user-agent por falta de uma regra
+     font-family real. Afetava o app inteiro, não só esta troca de fonte. */
+  font-family: var(--font-sans), sans-serif;
   font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
 }
