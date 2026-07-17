@@ -172,9 +172,33 @@ describe('Customers (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/customers/update')
       .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ id: '00000000-0000-0000-0000-000000000000', phone: '11888887777' });
+      // UUID v4 sintaticamente válido, mas que não existe no banco — o
+      // "nil UUID" (todo zero) falha @IsUUID('4') antes mesmo de chegar
+      // no Manager, o que testaria a validação, não o 404 do Manager.
+      .send({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', phone: '11888887777' });
 
     expect(response.status).toBe(404);
+  });
+
+  it('rejects a malformed id with 400 (not a 500 from an unhandled Prisma error)', async () => {
+    const admin = await signupAdmin(`badid-${Date.now()}`);
+
+    const getResponse = await request(app.getHttpServer())
+      .get('/api/v1/customer?id=not-a-uuid')
+      .set('Authorization', `Bearer ${admin.access_token}`);
+    expect(getResponse.status).toBe(400);
+
+    const updateResponse = await request(app.getHttpServer())
+      .post('/api/v1/customers/update')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ id: 'not-a-uuid', phone: '11888887777' });
+    expect(updateResponse.status).toBe(400);
+
+    const deleteResponse = await request(app.getHttpServer())
+      .post('/api/v1/customers/delete')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ id: 'not-a-uuid' });
+    expect(deleteResponse.status).toBe(400);
   });
 
   it('gets a customer by id', async () => {

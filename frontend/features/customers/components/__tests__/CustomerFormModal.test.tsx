@@ -81,6 +81,39 @@ describe('CustomerFormModal', () => {
     expect(toastMock.success).toHaveBeenCalled();
   });
 
+  it('omits address from the payload when left blank', async () => {
+    vi.mocked(customersApi.create).mockResolvedValue({ customer: { ...editingCustomer, id: 'new-id' } });
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+
+    await user.type(screen.getByLabelText(/cpf ou cnpj/i), '11144477735');
+    await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
+    await user.type(screen.getByLabelText(/telefone/i), '11988887777');
+    await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+
+    await waitFor(() => expect(customersApi.create).toHaveBeenCalled());
+    expect(customersApi.create).toHaveBeenCalledWith(expect.objectContaining({ address: undefined }));
+  });
+
+  it('includes only the filled-in address fields in the payload', async () => {
+    vi.mocked(customersApi.create).mockResolvedValue({ customer: { ...editingCustomer, id: 'new-id' } });
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+
+    await user.type(screen.getByLabelText(/cpf ou cnpj/i), '11144477735');
+    await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
+    await user.type(screen.getByLabelText(/telefone/i), '11988887777');
+    await user.type(screen.getByLabelText(/^rua$/i), 'Rua das Flores');
+    await user.type(screen.getByLabelText(/^cidade$/i), 'São Paulo');
+    await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+
+    await waitFor(() =>
+      expect(customersApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({ address: { street: 'Rua das Flores', city: 'São Paulo' } }),
+      ),
+    );
+  });
+
   it('submits only the editable fields in edit mode', async () => {
     vi.mocked(customersApi.update).mockResolvedValue({ customer: editingCustomer });
     const onOpenChange = vi.fn();

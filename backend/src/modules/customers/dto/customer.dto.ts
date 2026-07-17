@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import { CUSTOMER_TYPES } from '@oficina/contracts';
 import type {
   CreateCustomerRequest,
@@ -39,6 +39,7 @@ export class CreateCustomerDto implements CreateCustomerRequest {
 
 export class UpdateCustomerDto implements UpdateCustomerRequest {
   @IsNotEmpty({ message: 'id is required' })
+  @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;
 
   @IsOptional()
@@ -64,11 +65,13 @@ export class UpdateCustomerDto implements UpdateCustomerRequest {
 
 export class DeleteCustomerDto implements DeleteCustomerRequest {
   @IsNotEmpty({ message: 'id is required' })
+  @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;
 }
 
 export class GetCustomerDto {
   @IsNotEmpty({ message: 'id is required' })
+  @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;
 }
 

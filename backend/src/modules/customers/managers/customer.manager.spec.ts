@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
+import { Prisma } from '@oficina/database';
 import type { DocumentValidationResult } from '../../../shared/documents/document-validator.service';
 import { CustomerManager } from './customer.manager';
 
@@ -78,6 +79,38 @@ describe('CustomerManager', () => {
         }),
       ).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
     });
+
+    it('translates a concurrent unique-constraint violation (P2002) into 409, not 500', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byDocument.mockResolvedValue(null);
+      deps.customerRepository.insert.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: 'test' }),
+      );
+
+      await expect(
+        deps.manager.create(actingUser, {
+          type: 'PF',
+          document: '111.444.777-35',
+          name: 'João da Silva',
+          phone: '11999998888',
+        }),
+      ).rejects.toMatchObject({ status: HttpStatus.CONFLICT, code: 'CUSTOMER_DOCUMENT_ALREADY_EXISTS' });
+    });
+
+    it('rethrows unrelated database errors', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byDocument.mockResolvedValue(null);
+      deps.customerRepository.insert.mockRejectedValue(new Error('connection lost'));
+
+      await expect(
+        deps.manager.create(actingUser, {
+          type: 'PF',
+          document: '111.444.777-35',
+          name: 'João da Silva',
+          phone: '11999998888',
+        }),
+      ).rejects.toThrow('connection lost');
+    });
   });
 
   describe('update', () => {
@@ -108,11 +141,21 @@ describe('CustomerManager', () => {
     it('soft deletes and records the audit log', async () => {
       const deps = buildManager();
       deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.customerRepository.softDelete.mockResolvedValue({ count: 1 });
 
       await deps.manager.delete(actingUser, 'customer-1');
 
       expect(deps.customerRepository.softDelete).toHaveBeenCalledWith('customer-1');
       expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'customer.deleted' }));
+    });
+
+    it('rejects with 404 when the customer is deleted concurrently between byId and softDelete', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.customerRepository.softDelete.mockResolvedValue({ count: 0 });
+
+      await expect(deps.manager.delete(actingUser, 'customer-1')).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+      expect(deps.auditLog.record).not.toHaveBeenCalled();
     });
 
     it('rejects deleting a non-existent customer with 404', async () => {

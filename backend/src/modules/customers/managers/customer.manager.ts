@@ -7,6 +7,7 @@ import type {
   PaginationData,
   UpdateCustomerRequest,
 } from '@oficina/contracts';
+import { Prisma } from '@oficina/database';
 import type { Customer as CustomerEntity } from '@oficina/database';
 import { AppErrorCode } from '../../../shared/errors/app-error-code';
 import { AppException } from '../../../shared/errors/app-exception';
@@ -38,16 +39,32 @@ export class CustomerManager {
       );
     }
 
-    const customer = await this.customerRepository.insert({
-      tenantId: actingUser.tenantId,
-      type: request.type,
-      document: documentCheck.normalized,
-      name: request.name,
-      phone: request.phone,
-      email: request.email,
-      address: request.address,
-      notes: request.notes,
-    });
+    // O check acima (byDocument) tem uma janela de corrida entre duas
+    // requisições concorrentes com o mesmo documento — o catch abaixo é a
+    // rede de segurança que garante 409 (não 500) mesmo nesse caso, contra
+    // o índice único parcial composto (tenant_id, document).
+    let customer: CustomerEntity;
+    try {
+      customer = await this.customerRepository.insert({
+        tenantId: actingUser.tenantId,
+        type: request.type,
+        document: documentCheck.normalized,
+        name: request.name,
+        phone: request.phone,
+        email: request.email,
+        address: request.address,
+        notes: request.notes,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new AppException(
+          AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS,
+          'Já existe um cliente cadastrado com este documento.',
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw error;
+    }
 
     await this.auditLog.record({
       tenantId: actingUser.tenantId,
@@ -100,7 +117,12 @@ export class CustomerManager {
       throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
     }
 
-    await this.customerRepository.softDelete(id);
+    const { count } = await this.customerRepository.softDelete(id);
+    if (count === 0) {
+      // Deletado por outra requisição concorrente entre o byId acima e
+      // agora — mesmo raciocínio de corrida do create() (ver comentário lá).
+      throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
+    }
 
     await this.auditLog.record({
       tenantId: actingUser.tenantId,
@@ -111,7 +133,7 @@ export class CustomerManager {
       metadata: {},
     });
 
-    return { customer: this.toResponse({ ...existing, deletedAt: new Date() }) };
+    return { customer: this.toResponse(existing) };
   }
 
   async getById(id: string): Promise<{ customer: CustomerResponse }> {
