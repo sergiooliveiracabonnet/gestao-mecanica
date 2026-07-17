@@ -113,3 +113,27 @@ model AuditLog {
   @@index([tenantId])
   @@map("audit_logs")
 }
+
+// Feature 3 (Clientes). document NÃO usa @unique aqui de propósito: a
+// unicidade real é um índice único parcial COMPOSTO (tenant_id, document)
+// WHERE deleted_at IS NULL, escrito à mão na migration — diferente do
+// índice single-column de tenants.document, porque aqui o documento é
+// único POR TENANT, não globalmente (a mesma pessoa pode ser cliente de
+// oficinas diferentes). Ver spec clientes-crud-pf-pj.md.
+model Customer {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  type      String
+  document  String
+  name      String
+  email     String?
+  phone     String
+  address   Json?
+  notes     String?
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId])
+  @@map("customers")
+}

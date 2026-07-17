@@ -9,8 +9,9 @@ import { RefreshTokenRepository } from './repositories/refresh-token.repository'
 import { RoleRepository } from './repositories/role.repository';
 import { PasswordService } from './services/password.service';
 import { TokenService } from './services/token.service';
-import { DocumentValidatorService } from './services/document-validator.service';
 
+// DocumentValidatorService vem do DocumentsModule (@Global(), registrado em
+// AppModule) — não precisa estar nos providers aqui.
 @Module({
   controllers: [AuthController, UsersController],
   providers: [
@@ -22,7 +23,6 @@ import { DocumentValidatorService } from './services/document-validator.service'
     RoleRepository,
     PasswordService,
     TokenService,
-    DocumentValidatorService,
   ],
 })
 export class IamModule {}

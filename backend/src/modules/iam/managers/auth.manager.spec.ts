@@ -1,7 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { AuthManager } from './auth.manager';
 import { AppException } from '../../../shared/errors/app-exception';
-import type { DocumentValidationResult } from '../services/document-validator.service';
+import type { DocumentValidationResult } from '../../../shared/documents/document-validator.service';
 
 function buildManager() {
   const prisma = {
