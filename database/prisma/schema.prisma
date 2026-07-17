@@ -137,3 +137,28 @@ model Customer {
   @@index([tenantId])
   @@map("customers")
 }
+
+// Feature 4 (Veículos). Mesmo padrão de unicidade por tenant do Customer.
+// customerId é uma FK lógica pra customers (validada no VehicleManager via
+// CustomerRepository.byId, nunca uma constraint física — ver SCHEMA.md).
+model Vehicle {
+  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId   String    @map("tenant_id") @db.Uuid
+  customerId String    @map("customer_id") @db.Uuid
+  brand      String
+  model      String
+  year       Int?
+  engine     String?
+  fuelType   String?   @map("fuel_type")
+  plate      String
+  chassis    String?
+  mileage    Int?
+  photos     String[]  @default([])
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("vehicles")
+}

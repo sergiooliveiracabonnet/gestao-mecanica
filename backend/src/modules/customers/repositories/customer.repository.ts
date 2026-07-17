@@ -59,6 +59,18 @@ export class CustomerRepository {
     });
   }
 
+  // Usado pelo VehicleManager pra denormalizar o nome do dono em telas de
+  // listagem de veículos sem N+1 (uma query em lote em vez de uma por
+  // veículo).
+  async byIds(ids: string[]) {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.prisma.client.customer.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+    });
+  }
+
   // Escopado ao tenant automaticamente pela extensão — checagem de
   // unicidade do documento é sempre POR TENANT (ver schema.prisma).
   async byDocument(document: string) {

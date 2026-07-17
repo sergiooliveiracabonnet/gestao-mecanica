@@ -15,16 +15,14 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/customers', label: 'Clientes', icon: Users },
+  { href: '/vehicles', label: 'Veículos', icon: Car },
   { href: '/users', label: 'Usuários', icon: ShieldCheck },
 ];
 
-// Módulos das próximas features do epic (Veículos, Ordem de Serviço) —
-// mostrados desabilitados de propósito: dá pro usuário ver a estrutura
-// completa do produto em vez de a sidebar parecer incompleta com só 2 itens.
-const UPCOMING_ITEMS: Array<{ label: string; icon: NavItem['icon'] }> = [
-  { label: 'Veículos', icon: Car },
-  { label: 'Ordens de Serviço', icon: ClipboardList },
-];
+// Módulos das próximas features do epic — mostrados desabilitados de
+// propósito: dá pro usuário ver a estrutura completa do produto em vez de
+// a sidebar parecer incompleta com poucos itens.
+const UPCOMING_ITEMS: Array<{ label: string; icon: NavItem['icon'] }> = [{ label: 'Ordens de Serviço', icon: ClipboardList }];
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Admin',
