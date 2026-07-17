@@ -218,3 +218,37 @@ model ServiceOrderStatusHistory {
   @@index([serviceOrderId])
   @@map("service_order_status_history")
 }
+
+// Feature: Integração FIPE. Catálogo global de marcas/modelos sincronizado
+// da API pública da FIPE — NÃO é dado de tenant (compartilhado por toda
+// oficina), por isso sem tenantId e NUNCA adicionado a TENANT_SCOPED_MODELS
+// (diferente do caso de ServiceOrderStatusHistory acima, que é excluído por
+// não ter a coluna mas ainda ser dado de UM tenant específico — aqui é
+// "não é dado de tenant nenhum"). Sem soft delete: sincronização é sempre
+// upsert (createMany skipDuplicates), nunca remove — ver spec.
+model FipeBrand {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  category  String
+  fipeCode  String    @map("fipe_code")
+  name      String
+  syncedAt  DateTime  @map("synced_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([category, fipeCode])
+  @@map("fipe_brands")
+}
+
+model FipeModel {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  brandId   String    @map("brand_id") @db.Uuid
+  fipeCode  String    @map("fipe_code")
+  name      String
+  syncedAt  DateTime  @map("synced_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([brandId, fipeCode])
+  @@index([brandId])
+  @@map("fipe_models")
+}
