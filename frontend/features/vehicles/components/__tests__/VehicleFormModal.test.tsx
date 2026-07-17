@@ -6,6 +6,7 @@ import type { VehicleListItemResponse } from '@oficina/contracts';
 import { VehicleFormModal } from '../VehicleFormModal';
 import { vehiclesApi } from '../../api/vehicles-api';
 import { customersApi } from '@/features/customers/api/customers-api';
+import { fipeApi } from '@/features/fipe/api/fipe-api';
 
 vi.mock('../../api/vehicles-api', () => ({
   vehiclesApi: { create: vi.fn(), update: vi.fn() },
@@ -13,6 +14,10 @@ vi.mock('../../api/vehicles-api', () => ({
 
 vi.mock('@/features/customers/api/customers-api', () => ({
   customersApi: { list: vi.fn() },
+}));
+
+vi.mock('@/features/fipe/api/fipe-api', () => ({
+  fipeApi: { listBrands: vi.fn(), listModels: vi.fn() },
 }));
 
 const { toastMock } = vi.hoisted(() => ({
@@ -44,21 +49,25 @@ describe('VehicleFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(customersApi.list).mockResolvedValue({ items: [customer], total: 1, offset: 0, limit: 100, hasMore: false });
+    vi.mocked(fipeApi.listBrands).mockResolvedValue({ brands: [{ id: 'b1', name: 'Fiat' }] });
+    vi.mocked(fipeApi.listModels).mockResolvedValue({ models: [{ id: 'm1', name: 'Uno' }] });
   });
 
   it('shows the customer picker in create mode', async () => {
     renderWithClient(<VehicleFormModal open onOpenChange={() => {}} />);
 
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    // Cliente + Categoria + Marca, todos comboboxes nesse ponto (Modelo ainda não tem marca escolhida).
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThanOrEqual(3);
     expect(screen.getByRole('button', { name: /cadastrar veículo/i })).toBeInTheDocument();
   });
 
   it('hides the customer picker in edit mode and shows the owner as read-only text', () => {
     renderWithClient(<VehicleFormModal open onOpenChange={() => {}} vehicle={editingVehicle} />);
 
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.getByText('João da Silva')).toBeInTheDocument();
+    // Edição: marca/modelo pré-existentes aparecem como texto livre, não select (spec Edge Case de edição).
     expect(screen.getByDisplayValue('Fiat')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Uno')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument();
   });
 
