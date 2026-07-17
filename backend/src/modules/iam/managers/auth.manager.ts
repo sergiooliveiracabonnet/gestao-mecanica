@@ -14,7 +14,7 @@ import { AppErrorCode } from '../../../shared/errors/app-error-code';
 import { AppException } from '../../../shared/errors/app-exception';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
-import { DocumentValidatorService } from '../services/document-validator.service';
+import { DocumentValidatorService } from '../../../shared/documents/document-validator.service';
 import { PasswordService } from '../services/password.service';
 import { TokenService } from '../services/token.service';
 import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
