@@ -15,6 +15,7 @@ import { AuditLogModule } from './shared/audit-log/audit-log.module';
 import { DocumentsModule } from './shared/documents/documents.module';
 import { IamModule } from './modules/iam/iam.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { VehiclesModule } from './modules/vehicles/vehicles.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { CustomersModule } from './modules/customers/customers.module';
     HealthModule,
     IamModule,
     CustomersModule,
+    VehiclesModule,
   ],
   providers: [
     // Ordem importa: ThrottlerGuard e JwtAuthGuard rodam antes do RolesGuard

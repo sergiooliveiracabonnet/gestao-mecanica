@@ -3,7 +3,7 @@ import { TenantContextService } from '../tenant-context/tenant-context.service';
 // Modelos com coluna tenant_id — únicos que passam pelo filtro automático.
 // Ao adicionar um model tenant-scoped em uma feature futura (Customer,
 // Vehicle, ServiceOrder...), inclua o nome aqui.
-const TENANT_SCOPED_MODELS = new Set(['User', 'AuditLog', 'Customer']);
+const TENANT_SCOPED_MODELS = new Set(['User', 'AuditLog', 'Customer', 'Vehicle']);
 
 // findFirst busca uma linha específica (normalmente por id/token hash) e é
 // usada de propósito em fluxos sem autenticação ainda (refresh, logout —

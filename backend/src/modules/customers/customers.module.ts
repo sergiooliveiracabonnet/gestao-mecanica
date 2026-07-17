@@ -8,5 +8,8 @@ import { CustomerRepository } from './repositories/customer.repository';
 @Module({
   controllers: [CustomersController],
   providers: [CustomerManager, CustomerRepository],
+  // VehicleManager (Feature 4) precisa validar que um customerId existe e
+  // pertence ao tenant antes de criar/atualizar um veículo.
+  exports: [CustomerRepository],
 })
 export class CustomersModule {}
