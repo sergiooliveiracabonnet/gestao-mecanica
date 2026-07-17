@@ -61,6 +61,17 @@ export class VehicleRepository {
     });
   }
 
+  // Usado pelo ServiceOrderManager pra denormalizar marca/modelo/placa em
+  // telas de listagem de OS sem N+1, mesmo padrão de CustomerRepository.byIds.
+  async byIds(ids: string[]) {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.prisma.client.vehicle.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+    });
+  }
+
   // Escopado ao tenant automaticamente pela extensão — checagem de
   // unicidade da placa é sempre POR TENANT (ver schema.prisma).
   async byPlate(plate: string) {

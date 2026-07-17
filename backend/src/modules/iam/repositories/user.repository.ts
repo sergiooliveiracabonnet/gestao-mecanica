@@ -85,6 +85,18 @@ export class UserRepository {
     });
   }
 
+  // Usado pelo ServiceOrderManager pra denormalizar o nome do técnico em
+  // telas de listagem de OS sem N+1, mesmo padrão de CustomerRepository.byIds.
+  // Escopado ao tenant (via `client`) — técnico de outro tenant nunca aparece.
+  async byIds(ids: string[]) {
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.prisma.client.user.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+    });
+  }
+
   async update(id: string, patch: UpdateUserInput) {
     return this.prisma.client.user.updateMany({
       where: { id, deletedAt: null },
