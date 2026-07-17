@@ -39,7 +39,7 @@ Arquitetura de referência: `docs/superpowers/specs/2026-07-14-arquitetura-mvp-d
 | 2 | IAM (Tenant, Auth, RBAC fixo) | done | [spec](../specs/iam-tenant-auth-rbac.md) | [plan](../plans/iam-tenant-auth-rbac.md) | #1 |
 | 3 | Clientes (CRUD PF/PJ) | done | [spec](../specs/clientes-crud-pf-pj.md) | [plan](../plans/clientes-crud-pf-pj.md) | #1, #2 |
 | 4 | Veículos (CRUD vinculado a Cliente) | done | [spec](../specs/veiculos-crud-vinculado-cliente.md) | [plan](../plans/veiculos-crud-vinculado-cliente.md) | #1, #2, #3 |
-| 5 | Ordem de Serviço | todo | [spec](../specs/ordem-de-servico.md) | [plan](../plans/ordem-de-servico.md) | #1, #2, #3, #4 |
+| 5 | Ordem de Serviço | done | [spec](../specs/ordem-de-servico.md) | [plan](../plans/ordem-de-servico.md) | #1, #2, #3, #4 |
 
 ---
 
