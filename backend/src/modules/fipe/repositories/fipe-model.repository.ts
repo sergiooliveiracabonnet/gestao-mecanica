@@ -27,8 +27,4 @@ export class FipeModelRepository {
       orderBy: { name: 'asc' },
     });
   }
-
-  async byId(id: string) {
-    return this.prisma.unscoped.fipeModel.findFirst({ where: { id } });
-  }
 }

@@ -15,9 +15,21 @@ import { FipeSyncProcessor } from './processors/fipe-sync.processor';
 const WEEKLY_SYNC_CRON = '0 3 * * 1';
 const WEEKLY_SYNC_JOB_ID = 'fipe-weekly-sync';
 
+// `@nestjs/bullmq` sobe um Worker real (conexão Redis própria) pra cada
+// provider decorado com @Processor assim que o módulo é instanciado — não
+// é algo que o guard NODE_ENV==='test' dentro do onModuleInit ou do
+// FipeClientService alcança. Cada arquivo de teste e2e sobe o AppModule
+// inteiro em paralelo (processos Jest distintos), então sem essa exclusão
+// aqui múltiplos Workers reais ficam conectados à mesma fila/Redis
+// compartilhado ao mesmo tempo — a causa raiz por trás do vazamento de job
+// entre arquivos de teste já documentado em FipeClientService, e também de
+// flakiness de conexão no teardown de arquivos sem nenhum código FIPE (ex:
+// health.e2e-spec.ts). Achado ao vivo no Gate 3.5 desta feature.
+const FIPE_SYNC_PROCESSOR_PROVIDERS = process.env.NODE_ENV === 'test' ? [] : [FipeSyncProcessor];
+
 @Module({
   controllers: [FipeController],
-  providers: [FipeManager, FipeBrandRepository, FipeModelRepository, FipeClientService, FipeSyncProcessor],
+  providers: [FipeManager, FipeBrandRepository, FipeModelRepository, FipeClientService, ...FIPE_SYNC_PROCESSOR_PROVIDERS],
 })
 export class FipeModule implements OnModuleInit {
   constructor(

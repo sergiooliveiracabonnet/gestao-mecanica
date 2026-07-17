@@ -34,15 +34,4 @@ export class FipeBrandRepository {
       orderBy: { name: 'asc' },
     });
   }
-
-  async byId(id: string) {
-    return this.prisma.unscoped.fipeBrand.findFirst({ where: { id } });
-  }
-
-  async byIds(ids: string[]) {
-    if (ids.length === 0) {
-      return [];
-    }
-    return this.prisma.unscoped.fipeBrand.findMany({ where: { id: { in: ids } } });
-  }
 }

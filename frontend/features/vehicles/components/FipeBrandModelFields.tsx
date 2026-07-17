@@ -32,12 +32,14 @@ export function FipeBrandModelFields({ form, isEditing }: FipeBrandModelFieldsPr
   const [brandMode, setBrandMode] = useState<'select' | 'manual'>(isEditing ? 'manual' : 'select');
   const [modelMode, setModelMode] = useState<'select' | 'manual'>(isEditing ? 'manual' : 'select');
   const [selectedBrandId, setSelectedBrandId] = useState<string | undefined>(undefined);
+  const [selectedModelId, setSelectedModelId] = useState<string | undefined>(undefined);
 
   const { data: brandsData, isLoading: isLoadingBrands } = useFipeBrands(category);
   const { data: modelsData, isLoading: isLoadingModels } = useFipeModels(selectedBrandId, { enabled: brandMode === 'select' });
 
   function resetBrandAndModel() {
     setSelectedBrandId(undefined);
+    setSelectedModelId(undefined);
     setBrandMode('select');
     setModelMode('select');
     form.setValue('brand', '');
@@ -63,15 +65,18 @@ export function FipeBrandModelFields({ form, isEditing }: FipeBrandModelFieldsPr
     }
     // Trocar de marca invalida o modelo escolhido antes.
     setModelMode('select');
+    setSelectedModelId(undefined);
     form.setValue('model', '');
   }
 
   function handleModelChange(value: string) {
     if (value === OTHER_OPTION_VALUE) {
       setModelMode('manual');
+      setSelectedModelId(undefined);
       form.setValue('model', '');
     } else {
       const model = modelsData?.models.find((item) => item.id === value);
+      setSelectedModelId(value);
       form.setValue('model', model?.name ?? '');
     }
   }
@@ -81,11 +86,13 @@ export function FipeBrandModelFields({ form, isEditing }: FipeBrandModelFieldsPr
     setSelectedBrandId(undefined);
     form.setValue('brand', '');
     setModelMode('select');
+    setSelectedModelId(undefined);
     form.setValue('model', '');
   }
 
   function switchModelToFipeList() {
     setModelMode('select');
+    setSelectedModelId(undefined);
     form.setValue('model', '');
   }
 
@@ -153,7 +160,7 @@ export function FipeBrandModelFields({ form, isEditing }: FipeBrandModelFieldsPr
             <FormItem>
               <FormLabel>Modelo</FormLabel>
               {modelMode === 'select' ? (
-                <Select onValueChange={handleModelChange} disabled={!selectedBrandId} value={field.value || ''}>
+                <Select onValueChange={handleModelChange} disabled={!selectedBrandId} value={selectedModelId ?? ''}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue

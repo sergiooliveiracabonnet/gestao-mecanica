@@ -26,6 +26,21 @@ const { toastMock } = vi.hoisted(() => ({
 
 vi.mock('sonner', () => ({ toast: toastMock }));
 
+// jsdom não implementa a Pointer Events API que o Radix Select usa — mesmo
+// polyfill já usado em ServiceOrderFormModal.test.tsx.
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+}
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {};
+}
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = () => {};
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 function renderWithClient(ui: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
@@ -79,6 +94,33 @@ describe('VehicleFormModal', () => {
 
     expect(await screen.findByText(/selecione um cliente/i)).toBeInTheDocument();
     expect(vehiclesApi.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a vehicle with brand/model chosen through the FIPE selects', async () => {
+    vi.mocked(vehiclesApi.create).mockResolvedValue({ vehicle: editingVehicle });
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithClient(<VehicleFormModal open onOpenChange={onOpenChange} />);
+
+    await user.click(await screen.findByLabelText(/cliente/i));
+    await user.click(await screen.findByRole('option', { name: 'João da Silva' }));
+
+    await user.click(screen.getByLabelText(/marca/i));
+    await user.click(await screen.findByRole('option', { name: 'Fiat' }));
+    await waitFor(() => expect(screen.getByLabelText(/modelo/i)).not.toBeDisabled());
+
+    await user.click(screen.getByLabelText(/modelo/i));
+    await user.click(await screen.findByRole('option', { name: 'Uno' }));
+
+    await user.type(screen.getByLabelText(/placa/i), 'ABC1D23');
+    await user.click(screen.getByRole('button', { name: /cadastrar veículo/i }));
+
+    await waitFor(() =>
+      expect(vehiclesApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({ customerId: 'c1', brand: 'Fiat', model: 'Uno', plate: 'ABC1D23' }),
+      ),
+    );
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
   it('submits only the editable fields in edit mode, without customerId', async () => {
