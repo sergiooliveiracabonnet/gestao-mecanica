@@ -7,10 +7,6 @@ import { InviteUserModal } from '@/features/users/components/InviteUserModal';
 import { UsersTable } from '@/features/users/components/UsersTable';
 import { useUsersList } from '@/features/users/hooks/use-users';
 
-// Página depende de estado client-only (zustand persist lendo localStorage
-// via AuthGuard) — nunca deve ser pré-renderizada estaticamente no build.
-export const dynamic = 'force-dynamic';
-
 const PAGE_SIZE = 20;
 
 function UsersPageContent() {
@@ -19,38 +15,39 @@ function UsersPageContent() {
   const { data, isLoading, isError, refetch } = useUsersList({ offset, limit: PAGE_SIZE });
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-text">Usuários</h1>
-          <p className="text-sm text-text-muted">Gerencie quem tem acesso à sua oficina.</p>
-        </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-end">
         <Button onClick={() => setInviteModalOpen(true)}>Convidar usuário</Button>
       </div>
 
-      <div className="mt-6">
-        <UsersTable items={data?.items ?? []} isLoading={isLoading} isError={isError} onRetry={refetch} />
-      </div>
+      <UsersTable items={data?.items ?? []} isLoading={isLoading} isError={isError} onRetry={refetch} />
 
       {data && data.total > PAGE_SIZE && (
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
-            Anterior
-          </Button>
-          <Button variant="outline" disabled={!data.hasMore} onClick={() => setOffset(offset + PAGE_SIZE)}>
-            Próxima
-          </Button>
+        <div className="flex items-center justify-between text-sm text-text-muted">
+          <span>{data.total} usuários no total</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
+              Anterior
+            </Button>
+            <Button variant="outline" size="sm" disabled={!data.hasMore} onClick={() => setOffset(offset + PAGE_SIZE)}>
+              Próxima
+            </Button>
+          </div>
         </div>
       )}
 
       <InviteUserModal open={inviteModalOpen} onOpenChange={setInviteModalOpen} />
-    </main>
+    </div>
   );
 }
 
 export default function UsersPage() {
+  // Restrição de papel específica desta página — o AuthGuard do layout
+  // (app/(dashboard)/layout.tsx) só garante "está logado", não papéis.
+  // Redireciona pra /customers (não pro default '/users' do AuthGuard,
+  // que aqui seria um loop) quando o papel não tem acesso.
   return (
-    <AuthGuard allowedRoles={['ADMIN', 'MANAGER']}>
+    <AuthGuard allowedRoles={['ADMIN', 'MANAGER']} redirectOnForbiddenTo="/customers">
       <UsersPageContent />
     </AuthGuard>
   );

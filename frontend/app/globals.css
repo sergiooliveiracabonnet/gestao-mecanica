@@ -12,6 +12,31 @@
   --color-success: #16a34a;
   --color-danger: #dc2626;
   --color-warning: #d97706;
+
+  /* Alias contract consumida pelos primitivos shadcn (Button, Card, Table,
+     Select, Dialog...) — sem isso, metade das variantes (outline, ghost,
+     secondary, hover, focus ring, popover) não tem cor nenhuma definida e
+     o Tailwind simplesmente não gera CSS pra elas. Deriva dos tokens acima
+     em vez de introduzir uma paleta paralela. */
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: #ffffff;
+  --card-foreground: var(--color-text);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-primary);
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: var(--color-text);
+  --muted: #f1f5f9;
+  --muted-foreground: var(--color-text-muted);
+  --accent: #eff6ff;
+  --accent-foreground: #1d4ed8;
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
 }
 
 .dark {
@@ -24,9 +49,55 @@
   --color-success: #22c55e;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
+
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: #111827;
+  --card-foreground: var(--color-text);
+  --popover: #131a26;
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-primary);
+  --primary-foreground: #ffffff;
+  --secondary: #1e293b;
+  --secondary-foreground: var(--color-text);
+  --muted: #1f2937;
+  --muted-foreground: var(--color-text-muted);
+  --accent: #16223a;
+  --accent-foreground: #93c5fd;
+  --destructive: var(--color-danger);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-primary);
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar discreta — o padrão do SO destoa do resto da interface. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

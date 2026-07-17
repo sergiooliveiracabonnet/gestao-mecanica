@@ -51,10 +51,10 @@ export function CustomersTable({ items, isLoading, isError, onRetry, canManage, 
   }
 
   return (
-    <div className="overflow-x-auto rounded-card border border-border">
+    <div className="overflow-x-auto rounded-card border border-border bg-card shadow-sm">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="hover:bg-transparent">
             <TableHead>Nome</TableHead>
             <TableHead>Documento</TableHead>
             <TableHead>Telefone</TableHead>

@@ -1,23 +1,19 @@
 'use client';
 
 import { useState } from 'react';
+import { Search } from 'lucide-react';
 import type { CustomerListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AuthGuard } from '@/features/auth/components/AuthGuard';
 import { CustomerFormModal } from '@/features/customers/components/CustomerFormModal';
 import { CustomersTable } from '@/features/customers/components/CustomersTable';
 import { DeleteCustomerDialog } from '@/features/customers/components/DeleteCustomerDialog';
 import { useCustomersList } from '@/features/customers/hooks/use-customers';
 import { useAuthStore } from '@/stores/auth-store';
 
-// Página depende de estado client-only (zustand persist lendo localStorage
-// via AuthGuard) — nunca deve ser pré-renderizada estaticamente no build.
-export const dynamic = 'force-dynamic';
-
 const PAGE_SIZE = 20;
 
-function CustomersPageContent() {
+export default function CustomersPage() {
   const user = useAuthStore((state) => state.user);
   // MECHANIC vê a tela (precisa consultar o dono do veículo numa OS), mas
   // não gerencia clientes — RolesGuard do backend é a fonte de verdade,
@@ -43,60 +39,49 @@ function CustomersPageContent() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-text">Clientes</h1>
-          <p className="text-sm text-text-muted">Gerencie os clientes da sua oficina.</p>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
+          <Input
+            placeholder="Buscar por nome ou documento..."
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setOffset(0);
+            }}
+            className="pl-9"
+          />
         </div>
         {canManage && <Button onClick={openCreateModal}>Novo cliente</Button>}
       </div>
 
-      <div className="mt-6">
-        <Input
-          placeholder="Buscar por nome ou documento..."
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setOffset(0);
-          }}
-          className="max-w-sm"
-        />
-      </div>
-
-      <div className="mt-4">
-        <CustomersTable
-          items={data?.items ?? []}
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={refetch}
-          canManage={canManage}
-          onEdit={openEditModal}
-          onDelete={setDeletingCustomer}
-        />
-      </div>
+      <CustomersTable
+        items={data?.items ?? []}
+        isLoading={isLoading}
+        isError={isError}
+        onRetry={refetch}
+        canManage={canManage}
+        onEdit={openEditModal}
+        onDelete={setDeletingCustomer}
+      />
 
       {data && data.total > PAGE_SIZE && (
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="outline" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
-            Anterior
-          </Button>
-          <Button variant="outline" disabled={!data.hasMore} onClick={() => setOffset(offset + PAGE_SIZE)}>
-            Próxima
-          </Button>
+        <div className="flex items-center justify-between text-sm text-text-muted">
+          <span>{data.total} clientes no total</span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
+              Anterior
+            </Button>
+            <Button variant="outline" size="sm" disabled={!data.hasMore} onClick={() => setOffset(offset + PAGE_SIZE)}>
+              Próxima
+            </Button>
+          </div>
         </div>
       )}
 
       <CustomerFormModal open={formModalOpen} onOpenChange={setFormModalOpen} customer={editingCustomer} />
       <DeleteCustomerDialog open={Boolean(deletingCustomer)} onOpenChange={(open) => !open && setDeletingCustomer(null)} customer={deletingCustomer} />
-    </main>
-  );
-}
-
-export default function CustomersPage() {
-  return (
-    <AuthGuard>
-      <CustomersPageContent />
-    </AuthGuard>
+    </div>
   );
 }

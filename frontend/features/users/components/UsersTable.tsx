@@ -62,10 +62,10 @@ export function UsersTable({ items, isLoading, isError, onRetry }: UsersTablePro
   }
 
   return (
-    <div className="overflow-x-auto rounded-card border border-border">
+    <div className="overflow-x-auto rounded-card border border-border bg-card shadow-sm">
       <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="hover:bg-transparent">
             <TableHead>Nome</TableHead>
             <TableHead>E-mail</TableHead>
             <TableHead>Papel</TableHead>
