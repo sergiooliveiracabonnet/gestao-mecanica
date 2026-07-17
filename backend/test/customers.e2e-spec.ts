@@ -86,6 +86,82 @@ describe('Customers (e2e)', () => {
     expect(response.body.customer.document).toBe(payload.document.replace(/\D/g, ''));
   });
 
+  it('creates a customer with the Feature 6 optional fields and returns them', async () => {
+    const admin = await signupAdmin(`create-extended-${Date.now()}`);
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({
+        ...customerPayload('create-extended'),
+        rg: '12.345.678-9',
+        secondary_contact_name: 'Maria da Silva',
+        secondary_contact_phone: '11988887777',
+        secondary_contact_relation: 'Cônjuge',
+        preferred_contact_channel: 'WHATSAPP',
+        preferred_contact_time: 'AFTERNOON',
+      });
+
+    expect(response.status).toBe(201);
+    expect(response.body.customer.rg).toBe('12.345.678-9');
+    expect(response.body.customer.secondary_contact_name).toBe('Maria da Silva');
+    expect(response.body.customer.preferred_contact_channel).toBe('WHATSAPP');
+    expect(response.body.customer.preferred_contact_time).toBe('AFTERNOON');
+  });
+
+  it('accepts partially-filled Feature 6 fields (only name, no phone/relation)', async () => {
+    const admin = await signupAdmin(`create-partial-${Date.now()}`);
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ ...customerPayload('create-partial'), secondary_contact_name: 'Maria da Silva' });
+
+    expect(response.status).toBe(201);
+    expect(response.body.customer.secondary_contact_name).toBe('Maria da Silva');
+    expect(response.body.customer.secondary_contact_phone).toBeUndefined();
+  });
+
+  it('rejects an invalid preferred_contact_channel with 400', async () => {
+    const admin = await signupAdmin(`badchannel-${Date.now()}`);
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ ...customerPayload('badchannel'), preferred_contact_channel: 'CARRIER_PIGEON' });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('does not block state_registration on a PF customer or rg on a PJ customer (Edge Case 3)', async () => {
+    const admin = await signupAdmin(`crossfield-${Date.now()}`);
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ ...customerPayload('crossfield'), type: 'PF', state_registration: '123.456.789.111' });
+
+    expect(response.status).toBe(201);
+    expect(response.body.customer.state_registration).toBe('123.456.789.111');
+  });
+
+  it('updates the Feature 6 fields on an existing customer', async () => {
+    const admin = await signupAdmin(`update-extended-${Date.now()}`);
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send(customerPayload('update-extended'));
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/customers/update')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ id: created.body.customer.id, preferred_contact_channel: 'EMAIL', preferred_contact_time: 'MORNING' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.customer.preferred_contact_channel).toBe('EMAIL');
+    expect(response.body.customer.preferred_contact_time).toBe('MORNING');
+  });
+
   it('rejects an invalid document with 400', async () => {
     const admin = await signupAdmin(`invalid-${Date.now()}`);
 

@@ -15,6 +15,13 @@ export interface CreateCustomerInput {
   email?: string;
   address?: CustomerAddress;
   notes?: string;
+  rg?: string;
+  stateRegistration?: string;
+  secondaryContactName?: string;
+  secondaryContactPhone?: string;
+  secondaryContactRelation?: string;
+  preferredContactChannel?: string;
+  preferredContactTime?: string;
 }
 
 export interface UpdateCustomerInput {
@@ -23,6 +30,13 @@ export interface UpdateCustomerInput {
   email?: string;
   address?: CustomerAddress;
   notes?: string;
+  rg?: string;
+  stateRegistration?: string;
+  secondaryContactName?: string;
+  secondaryContactPhone?: string;
+  secondaryContactRelation?: string;
+  preferredContactChannel?: string;
+  preferredContactTime?: string;
 }
 
 export interface ListCustomersResult<T> {
@@ -49,6 +63,13 @@ export class CustomerRepository {
         email: input.email,
         address: input.address as Prisma.InputJsonValue | undefined,
         notes: input.notes,
+        rg: input.rg,
+        stateRegistration: input.stateRegistration,
+        secondaryContactName: input.secondaryContactName,
+        secondaryContactPhone: input.secondaryContactPhone,
+        secondaryContactRelation: input.secondaryContactRelation,
+        preferredContactChannel: input.preferredContactChannel,
+        preferredContactTime: input.preferredContactTime,
       },
     });
   }

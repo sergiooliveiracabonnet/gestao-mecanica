@@ -358,16 +358,23 @@ describe('ServiceOrderManager', () => {
       expect(result.items[0].technicianName).toBe('Carlos Mecânico');
     });
 
-    it('filters by status/vehicleId/technicianId', async () => {
+    it('filters by status/vehicleId/technicianId/customerId', async () => {
       const deps = buildManager();
       deps.serviceOrderRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
       deps.vehicleRepository.byIds.mockResolvedValue([]);
       deps.customerRepository.byIds.mockResolvedValue([]);
       deps.userRepository.byIds.mockResolvedValue([]);
 
-      await deps.manager.list({ offset: 0, limit: 20, status: 'IN_PROGRESS' as never, vehicleId: 'vehicle-1', technicianId: 'technician-1' });
+      await deps.manager.list({
+        offset: 0,
+        limit: 20,
+        status: 'IN_PROGRESS' as never,
+        vehicleId: 'vehicle-1',
+        technicianId: 'technician-1',
+        customerId: 'customer-1',
+      });
 
-      expect(deps.serviceOrderRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'IN_PROGRESS', 'vehicle-1', 'technician-1');
+      expect(deps.serviceOrderRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'IN_PROGRESS', 'vehicle-1', 'technician-1', 'customer-1');
     });
   });
 });

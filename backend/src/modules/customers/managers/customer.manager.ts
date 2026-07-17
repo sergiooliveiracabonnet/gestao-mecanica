@@ -54,6 +54,13 @@ export class CustomerManager {
         email: request.email,
         address: request.address,
         notes: request.notes,
+        rg: request.rg,
+        stateRegistration: request.stateRegistration,
+        secondaryContactName: request.secondaryContactName,
+        secondaryContactPhone: request.secondaryContactPhone,
+        secondaryContactRelation: request.secondaryContactRelation,
+        preferredContactChannel: request.preferredContactChannel,
+        preferredContactTime: request.preferredContactTime,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -92,6 +99,13 @@ export class CustomerManager {
       email: request.email,
       address: request.address,
       notes: request.notes,
+      rg: request.rg,
+      stateRegistration: request.stateRegistration,
+      secondaryContactName: request.secondaryContactName,
+      secondaryContactPhone: request.secondaryContactPhone,
+      secondaryContactRelation: request.secondaryContactRelation,
+      preferredContactChannel: request.preferredContactChannel,
+      preferredContactTime: request.preferredContactTime,
     });
 
     const updated = await this.customerRepository.byId(request.id);
@@ -168,6 +182,13 @@ export class CustomerManager {
       phone: customer.phone,
       address: (customer.address as CustomerResponse['address']) ?? undefined,
       notes: customer.notes ?? undefined,
+      rg: customer.rg ?? undefined,
+      stateRegistration: customer.stateRegistration ?? undefined,
+      secondaryContactName: customer.secondaryContactName ?? undefined,
+      secondaryContactPhone: customer.secondaryContactPhone ?? undefined,
+      secondaryContactRelation: customer.secondaryContactRelation ?? undefined,
+      preferredContactChannel: (customer.preferredContactChannel as CustomerResponse['preferredContactChannel']) ?? undefined,
+      preferredContactTime: (customer.preferredContactTime as CustomerResponse['preferredContactTime']) ?? undefined,
       createdAt: customer.createdAt.toISOString(),
     };
   }

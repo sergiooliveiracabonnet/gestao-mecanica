@@ -77,12 +77,20 @@ export class ServiceOrderRepository {
     });
   }
 
-  async listByTenant(offset: number, limit: number, status?: ServiceOrderStatus, vehicleId?: string, technicianId?: string) {
+  async listByTenant(
+    offset: number,
+    limit: number,
+    status?: ServiceOrderStatus,
+    vehicleId?: string,
+    technicianId?: string,
+    customerId?: string,
+  ) {
     const where = {
       deletedAt: null,
       ...(status ? { status } : {}),
       ...(vehicleId ? { vehicleId } : {}),
       ...(technicianId ? { technicianId } : {}),
+      ...(customerId ? { customerId } : {}),
     };
 
     const [items, total] = await Promise.all([
