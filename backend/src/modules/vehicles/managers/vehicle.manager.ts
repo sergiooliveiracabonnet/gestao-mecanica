@@ -108,14 +108,13 @@ export class VehicleManager {
       throw new AppException(AppErrorCode.VEHICLE_NOT_FOUND, 'Veículo não encontrado.', HttpStatus.NOT_FOUND);
     }
 
+    // Sem throw se o cliente não existir mais: a mutação do veículo já foi
+    // persistida (linha acima), e o cliente pode ter sido legitimamente
+    // soft-deletado depois que o veículo foi criado (POST /customers/delete
+    // permite isso de propósito). Lançar aqui devolveria 500 pra uma edição
+    // que na verdade teve sucesso — mesmo fallback de toResponse() usado por
+    // getById/delete/list.
     const customer = await this.customerRepository.byId(updated.customerId);
-    if (!customer) {
-      throw new AppException(
-        AppErrorCode.VEHICLE_CUSTOMER_NOT_FOUND,
-        `Veículo ${updated.id} referencia um cliente inexistente.`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
 
     await this.auditLog.record({
       tenantId: actingUser.tenantId,

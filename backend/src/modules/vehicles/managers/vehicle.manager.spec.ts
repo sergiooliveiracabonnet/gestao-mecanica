@@ -150,6 +150,17 @@ describe('VehicleManager', () => {
 
       expect(deps.vehicleRepository.byPlate).not.toHaveBeenCalled();
     });
+
+    it('succeeds with a placeholder customer name instead of 500 when the owning customer was removed after vehicle creation', async () => {
+      const deps = buildManager();
+      deps.vehicleRepository.byId.mockResolvedValueOnce(baseVehicle).mockResolvedValueOnce({ ...baseVehicle, mileage: 60000 });
+      deps.customerRepository.byId.mockResolvedValue(null);
+
+      const result = await deps.manager.update(actingUser, { id: 'vehicle-1', mileage: 60000 });
+
+      expect(result.vehicle.customerName).toBe('Cliente removido');
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'vehicle.updated' }));
+    });
   });
 
   describe('delete', () => {
