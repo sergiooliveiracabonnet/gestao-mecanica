@@ -15,6 +15,7 @@ const config: Config = {
         success: 'var(--color-success)',
         danger: 'var(--color-danger)',
         warning: 'var(--color-warning)',
+        info: 'var(--color-info)',
         // Contrato shadcn — ver comentário em globals.css. Sem estes, as
         // classes bg-card/bg-muted/bg-accent/border-input/ring-ring etc.
         // usadas pelos primitivos (Button, Select, Dialog, Table...) não
