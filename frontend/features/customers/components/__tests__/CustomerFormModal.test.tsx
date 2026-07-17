@@ -1,0 +1,102 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CustomerListItemResponse } from '@oficina/contracts';
+import { CustomerFormModal } from '../CustomerFormModal';
+import { customersApi } from '../../api/customers-api';
+
+vi.mock('../../api/customers-api', () => ({
+  customersApi: { create: vi.fn(), update: vi.fn() },
+}));
+
+const { toastMock } = vi.hoisted(() => ({
+  toastMock: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('sonner', () => ({ toast: toastMock }));
+
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
+const editingCustomer: CustomerListItemResponse = {
+  id: 'c1',
+  tenantId: 't1',
+  type: 'PF',
+  document: '11144477735',
+  name: 'João da Silva',
+  phone: '11999998888',
+  createdAt: '2026-01-01T00:00:00Z',
+};
+
+describe('CustomerFormModal', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('shows type/document fields in create mode', () => {
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+
+    expect(screen.getByLabelText(/cpf ou cnpj/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /cadastrar cliente/i })).toBeInTheDocument();
+  });
+
+  it('hides type/document fields in edit mode', () => {
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
+
+    expect(screen.queryByLabelText(/cpf ou cnpj/i)).not.toBeInTheDocument();
+    expect(screen.getByDisplayValue('João da Silva')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument();
+  });
+
+  it('shows validation errors when submitted empty in create mode', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+
+    await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+
+    expect(await screen.findByText(/informe o documento/i)).toBeInTheDocument();
+    expect(customersApi.create).not.toHaveBeenCalled();
+  });
+
+  it('submits the create payload and closes on success', async () => {
+    vi.mocked(customersApi.create).mockResolvedValue({ customer: { ...editingCustomer, id: 'new-id' } });
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={onOpenChange} />);
+
+    await user.type(screen.getByLabelText(/cpf ou cnpj/i), '11144477735');
+    await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
+    await user.type(screen.getByLabelText(/telefone/i), '11988887777');
+    await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+
+    await waitFor(() =>
+      expect(customersApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'PF', document: '11144477735', name: 'Maria Souza', phone: '11988887777' }),
+      ),
+    );
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(toastMock.success).toHaveBeenCalled();
+  });
+
+  it('submits only the editable fields in edit mode', async () => {
+    vi.mocked(customersApi.update).mockResolvedValue({ customer: editingCustomer });
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={onOpenChange} customer={editingCustomer} />);
+
+    const phoneInput = screen.getByLabelText(/telefone/i);
+    await user.clear(phoneInput);
+    await user.type(phoneInput, '11777776666');
+    await user.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    await waitFor(() =>
+      expect(customersApi.update).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'c1', name: 'João da Silva', phone: '11777776666' }),
+      ),
+    );
+    expect(customersApi.update).not.toHaveBeenCalledWith(expect.objectContaining({ type: expect.anything() }));
+  });
+});
