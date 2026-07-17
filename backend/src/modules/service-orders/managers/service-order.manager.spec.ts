@@ -165,6 +165,18 @@ describe('ServiceOrderManager', () => {
       expect(result.serviceOrder.technicianId).toBeUndefined();
       expect(deps.userRepository.byId).not.toHaveBeenCalled();
     });
+
+    it('rejects a disabled technicianId with 400', async () => {
+      const deps = buildManager();
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.userRepository.byId.mockResolvedValue({ ...baseTechnician, status: 'disabled' });
+
+      await expect(deps.manager.create(actingUser, { vehicleId: 'vehicle-1', technicianId: 'technician-1' })).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+        code: 'SERVICE_ORDER_TECHNICIAN_NOT_FOUND',
+      });
+      expect(deps.serviceOrderRepository.insert).not.toHaveBeenCalled();
+    });
   });
 
   describe('update', () => {
@@ -186,6 +198,18 @@ describe('ServiceOrderManager', () => {
       deps.serviceOrderRepository.byId.mockResolvedValue(null);
 
       await expect(deps.manager.update(actingUser, { id: 'missing' })).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+    });
+
+    it('rejects a disabled technicianId with 400', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.userRepository.byId.mockResolvedValue({ ...baseTechnician, status: 'disabled' });
+
+      await expect(deps.manager.update(actingUser, { id: 'so-1', technicianId: 'technician-1' })).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+        code: 'SERVICE_ORDER_TECHNICIAN_NOT_FOUND',
+      });
+      expect(deps.serviceOrderRepository.update).not.toHaveBeenCalled();
     });
 
     it('falls back to placeholder names instead of 500 when the vehicle/customer/technician were removed after creation', async () => {

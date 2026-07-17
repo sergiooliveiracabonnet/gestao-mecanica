@@ -20,7 +20,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/users', label: 'Usuários', icon: ShieldCheck },
 ];
 
-
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Admin',
   MANAGER: 'Gerente',

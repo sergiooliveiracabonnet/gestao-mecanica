@@ -48,8 +48,8 @@ export class ServiceOrderManager {
     let technician: UserEntity | null = null;
     if (request.technicianId) {
       technician = await this.userRepository.byId(request.technicianId);
-      if (!technician) {
-        throw new AppException(AppErrorCode.SERVICE_ORDER_TECHNICIAN_NOT_FOUND, 'Técnico informado não encontrado.', HttpStatus.BAD_REQUEST);
+      if (!technician || technician.status !== 'active') {
+        throw new AppException(AppErrorCode.SERVICE_ORDER_TECHNICIAN_NOT_FOUND, 'Técnico informado não encontrado ou está desabilitado.', HttpStatus.BAD_REQUEST);
       }
     }
 
@@ -104,8 +104,8 @@ export class ServiceOrderManager {
 
     if (request.technicianId) {
       const technician = await this.userRepository.byId(request.technicianId);
-      if (!technician) {
-        throw new AppException(AppErrorCode.SERVICE_ORDER_TECHNICIAN_NOT_FOUND, 'Técnico informado não encontrado.', HttpStatus.BAD_REQUEST);
+      if (!technician || technician.status !== 'active') {
+        throw new AppException(AppErrorCode.SERVICE_ORDER_TECHNICIAN_NOT_FOUND, 'Técnico informado não encontrado ou está desabilitado.', HttpStatus.BAD_REQUEST);
       }
     }
 

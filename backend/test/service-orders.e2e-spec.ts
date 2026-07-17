@@ -171,6 +171,22 @@ describe('Service Orders (e2e)', () => {
     expect(response.status).toBe(400);
   });
 
+  it('rejects a disabled technician_id with 400', async () => {
+    const suffix = `disabledtech-${Date.now()}`;
+    const admin = await signupAdmin(suffix);
+    const customerId = await createCustomer(admin.access_token, suffix);
+    const vehicleId = await createVehicle(admin.access_token, customerId, suffix);
+    const technician = await inviteTechnician(admin.access_token, suffix);
+    await prisma.unscoped.user.update({ where: { id: technician.userId }, data: { status: 'disabled' } });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/service-orders')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ vehicle_id: vehicleId, technician_id: technician.userId });
+
+    expect(response.status).toBe(400);
+  });
+
   it('rejects a malformed checklist (array instead of object) with 400', async () => {
     const admin = await signupAdmin(`badchecklist-${Date.now()}`);
     const customerId = await createCustomer(admin.access_token, 'badchecklist');
