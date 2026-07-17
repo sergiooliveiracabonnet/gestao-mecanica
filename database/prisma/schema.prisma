@@ -162,3 +162,48 @@ model Vehicle {
   @@index([customerId])
   @@map("vehicles")
 }
+
+// Feature 5 (Ordem de Serviço). customerId é derivado de vehicle.customerId
+// no momento da criação (VehicleManager/ServiceOrderManager), nunca aceito
+// diretamente da API — ver spec ordem-de-servico.md. vehicleId e
+// technicianId são FKs lógicas (vehicles, users), validadas no
+// ServiceOrderManager, nunca uma constraint física.
+model ServiceOrder {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  vehicleId     String    @map("vehicle_id") @db.Uuid
+  status        String
+  checklist     Json?
+  diagnosis     String?
+  technicianId  String?   @map("technician_id") @db.Uuid
+  openedAt      DateTime  @map("opened_at") @db.Timestamptz
+  closedAt      DateTime? @map("closed_at") @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([technicianId])
+  @@map("service_orders")
+}
+
+// Sem tenantId de propósito: só é lida/escrita por serviceOrderId, que já
+// passou por um ServiceOrderRepository.byId() tenant-scoped antes de chegar
+// aqui — ver Gotcha no plano ordem-de-servico.md. NÃO adicionar
+// 'ServiceOrderStatusHistory' a TENANT_SCOPED_MODELS (a extensão Prisma
+// quebraria tentando injetar tenant_id numa tabela sem essa coluna).
+model ServiceOrderStatusHistory {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  serviceOrderId String   @map("service_order_id") @db.Uuid
+  fromStatus     String?  @map("from_status")
+  toStatus       String   @map("to_status")
+  changedBy      String   @map("changed_by") @db.Uuid
+  changedAt      DateTime @map("changed_at") @db.Timestamptz
+
+  @@index([serviceOrderId])
+  @@map("service_order_status_history")
+}

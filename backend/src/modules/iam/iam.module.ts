@@ -24,5 +24,8 @@ import { TokenService } from './services/token.service';
     PasswordService,
     TokenService,
   ],
+  // ServiceOrderManager (Feature 5) precisa validar que um technicianId
+  // existe e pertence ao tenant — mesmo padrão de export do CustomerRepository.
+  exports: [UserRepository],
 })
 export class IamModule {}

@@ -16,13 +16,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: '/customers', label: 'Clientes', icon: Users },
   { href: '/vehicles', label: 'Veículos', icon: Car },
+  { href: '/service-orders', label: 'Ordens de Serviço', icon: ClipboardList },
   { href: '/users', label: 'Usuários', icon: ShieldCheck },
 ];
-
-// Módulos das próximas features do epic — mostrados desabilitados de
-// propósito: dá pro usuário ver a estrutura completa do produto em vez de
-// a sidebar parecer incompleta com poucos itens.
-const UPCOMING_ITEMS: Array<{ label: string; icon: NavItem['icon'] }> = [{ label: 'Ordens de Serviço', icon: ClipboardList }];
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Admin',
@@ -71,20 +67,6 @@ export function Sidebar() {
               <Icon className="size-[18px] shrink-0" />
               {item.label}
             </Link>
-          );
-        })}
-
-        <p className="px-3 pb-1 pt-4 text-xs font-medium uppercase tracking-wide text-text-muted/70">Em breve</p>
-        {UPCOMING_ITEMS.map((item) => {
-          const Icon = item.icon;
-          return (
-            <div
-              key={item.label}
-              className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-text-muted/50"
-            >
-              <Icon className="size-[18px] shrink-0" />
-              {item.label}
-            </div>
           );
         })}
       </nav>
