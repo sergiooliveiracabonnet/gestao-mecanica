@@ -230,4 +230,41 @@ describe('CustomerFormModal', () => {
     await waitFor(() => expect(serviceOrdersApi.list).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'c1' })));
     expect(await screen.findByText(/Fiat Uno/i)).toBeInTheDocument();
   });
+
+  it('paginates the Histórico tab for a customer with more than one page of service orders (Edge Case 4)', async () => {
+    const soItem = (id: string) => ({
+      id,
+      tenantId: 't1',
+      customerId: 'c1',
+      customerName: 'João da Silva',
+      vehicleId: 'v1',
+      vehicleBrand: 'Fiat',
+      vehicleModel: 'Uno',
+      vehiclePlate: 'ABC1D23',
+      status: 'DELIVERED' as const,
+      openedAt: '2026-01-01T00:00:00Z',
+      createdAt: '2026-01-01T00:00:00Z',
+    });
+    vi.mocked(serviceOrdersApi.list).mockImplementation(async (request) => ({
+      items: [soItem(request.offset === 0 ? 'so-page1' : 'so-page2')],
+      total: 25,
+      offset: request.offset,
+      limit: 20,
+      hasMore: request.offset === 0,
+    }));
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
+
+    await user.click(screen.getByRole('tab', { name: /histórico/i }));
+    await waitFor(() => expect(serviceOrdersApi.list).toHaveBeenCalledWith(expect.objectContaining({ offset: 0 })));
+
+    const nextButton = screen.getByRole('button', { name: /próxima/i });
+    expect(screen.getByRole('button', { name: /anterior/i })).toBeDisabled();
+    await user.click(nextButton);
+
+    await waitFor(() => expect(serviceOrdersApi.list).toHaveBeenCalledWith(expect.objectContaining({ offset: 20 })));
+    expect(screen.getByRole('button', { name: /próxima/i })).toBeDisabled();
+    // Clicking pagination inside the tab must never submit the outer customer form.
+    expect(customersApi.update).not.toHaveBeenCalled();
+  });
 });
