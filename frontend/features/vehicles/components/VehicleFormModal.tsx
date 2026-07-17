@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCustomersList } from '@/features/customers/hooks/use-customers';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateVehicle, useUpdateVehicle } from '../hooks/use-vehicles';
+import { FipeBrandModelFields } from './FipeBrandModelFields';
 
 // Sem lib de combobox nova nesta feature — o Select nativo populado com os
 // primeiros 100 clientes é uma limitação conhecida, aceita pro MVP (ver
@@ -32,7 +33,7 @@ const vehicleSchema = z.object({
   mileage: z.string().optional(),
 });
 
-type VehicleFormValues = z.infer<typeof vehicleSchema>;
+export type VehicleFormValues = z.infer<typeof vehicleSchema>;
 
 const EMPTY_VALUES: VehicleFormValues = {
   customerId: '',
@@ -177,34 +178,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
                 )}
               />
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="brand"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Marca</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Fiat" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="model"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Modelo</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Uno" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FipeBrandModelFields form={form} isEditing={isEditing} />
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}

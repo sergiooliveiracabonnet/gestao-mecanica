@@ -6,6 +6,7 @@ import type { VehicleListItemResponse } from '@oficina/contracts';
 import { VehicleFormModal } from '../VehicleFormModal';
 import { vehiclesApi } from '../../api/vehicles-api';
 import { customersApi } from '@/features/customers/api/customers-api';
+import { fipeApi } from '@/features/fipe/api/fipe-api';
 
 vi.mock('../../api/vehicles-api', () => ({
   vehiclesApi: { create: vi.fn(), update: vi.fn() },
@@ -15,11 +16,30 @@ vi.mock('@/features/customers/api/customers-api', () => ({
   customersApi: { list: vi.fn() },
 }));
 
+vi.mock('@/features/fipe/api/fipe-api', () => ({
+  fipeApi: { listBrands: vi.fn(), listModels: vi.fn() },
+}));
+
 const { toastMock } = vi.hoisted(() => ({
   toastMock: { success: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock('sonner', () => ({ toast: toastMock }));
+
+// jsdom não implementa a Pointer Events API que o Radix Select usa — mesmo
+// polyfill já usado em ServiceOrderFormModal.test.tsx.
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+}
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {};
+}
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = () => {};
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
 
 function renderWithClient(ui: React.ReactElement) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
@@ -44,21 +64,25 @@ describe('VehicleFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(customersApi.list).mockResolvedValue({ items: [customer], total: 1, offset: 0, limit: 100, hasMore: false });
+    vi.mocked(fipeApi.listBrands).mockResolvedValue({ brands: [{ id: 'b1', name: 'Fiat' }] });
+    vi.mocked(fipeApi.listModels).mockResolvedValue({ models: [{ id: 'm1', name: 'Uno' }] });
   });
 
   it('shows the customer picker in create mode', async () => {
     renderWithClient(<VehicleFormModal open onOpenChange={() => {}} />);
 
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    // Cliente + Categoria + Marca, todos comboboxes nesse ponto (Modelo ainda não tem marca escolhida).
+    expect(screen.getAllByRole('combobox').length).toBeGreaterThanOrEqual(3);
     expect(screen.getByRole('button', { name: /cadastrar veículo/i })).toBeInTheDocument();
   });
 
   it('hides the customer picker in edit mode and shows the owner as read-only text', () => {
     renderWithClient(<VehicleFormModal open onOpenChange={() => {}} vehicle={editingVehicle} />);
 
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.getByText('João da Silva')).toBeInTheDocument();
+    // Edição: marca/modelo pré-existentes aparecem como texto livre, não select (spec Edge Case de edição).
     expect(screen.getByDisplayValue('Fiat')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Uno')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument();
   });
 
@@ -70,6 +94,33 @@ describe('VehicleFormModal', () => {
 
     expect(await screen.findByText(/selecione um cliente/i)).toBeInTheDocument();
     expect(vehiclesApi.create).not.toHaveBeenCalled();
+  });
+
+  it('creates a vehicle with brand/model chosen through the FIPE selects', async () => {
+    vi.mocked(vehiclesApi.create).mockResolvedValue({ vehicle: editingVehicle });
+    const onOpenChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithClient(<VehicleFormModal open onOpenChange={onOpenChange} />);
+
+    await user.click(await screen.findByLabelText(/cliente/i));
+    await user.click(await screen.findByRole('option', { name: 'João da Silva' }));
+
+    await user.click(screen.getByLabelText(/marca/i));
+    await user.click(await screen.findByRole('option', { name: 'Fiat' }));
+    await waitFor(() => expect(screen.getByLabelText(/modelo/i)).not.toBeDisabled());
+
+    await user.click(screen.getByLabelText(/modelo/i));
+    await user.click(await screen.findByRole('option', { name: 'Uno' }));
+
+    await user.type(screen.getByLabelText(/placa/i), 'ABC1D23');
+    await user.click(screen.getByRole('button', { name: /cadastrar veículo/i }));
+
+    await waitFor(() =>
+      expect(vehiclesApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({ customerId: 'c1', brand: 'Fiat', model: 'Uno', plate: 'ABC1D23' }),
+      ),
+    );
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
   it('submits only the editable fields in edit mode, without customerId', async () => {

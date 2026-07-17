@@ -3,6 +3,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 export const AUDIT_LOG_QUEUE = 'audit-log';
+export const FIPE_SYNC_QUEUE = 'fipe-sync';
 
 @Global()
 @Module({
@@ -21,6 +22,7 @@ export const AUDIT_LOG_QUEUE = 'audit-log';
       },
     }),
     BullModule.registerQueue({ name: AUDIT_LOG_QUEUE }),
+    BullModule.registerQueue({ name: FIPE_SYNC_QUEUE }),
   ],
   exports: [BullModule],
 })

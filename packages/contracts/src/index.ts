@@ -10,5 +10,6 @@ export * from './response/user.response';
 export * from './response/customer.response';
 export * from './response/vehicle.response';
 export * from './response/service-order.response';
+export * from './response/fipe.response';
 export * from './response/pagination.response';
 export * from './utils/case-convert';
