@@ -97,6 +97,44 @@ describe('CustomerManager', () => {
       ).rejects.toMatchObject({ status: HttpStatus.CONFLICT, code: 'CUSTOMER_DOCUMENT_ALREADY_EXISTS' });
     });
 
+    it('persists the Feature 6 optional fields when provided', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byDocument.mockResolvedValue(null);
+      deps.customerRepository.insert.mockResolvedValue({
+        ...baseCustomer,
+        rg: '12.345.678-9',
+        secondaryContactName: 'Maria da Silva',
+        secondaryContactPhone: '11988887777',
+        secondaryContactRelation: 'Cônjuge',
+        preferredContactChannel: 'WHATSAPP',
+        preferredContactTime: 'AFTERNOON',
+      });
+
+      await deps.manager.create(actingUser, {
+        type: 'PF',
+        document: '111.444.777-35',
+        name: 'João da Silva',
+        phone: '11999998888',
+        rg: '12.345.678-9',
+        secondaryContactName: 'Maria da Silva',
+        secondaryContactPhone: '11988887777',
+        secondaryContactRelation: 'Cônjuge',
+        preferredContactChannel: 'WHATSAPP',
+        preferredContactTime: 'AFTERNOON',
+      });
+
+      expect(deps.customerRepository.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rg: '12.345.678-9',
+          secondaryContactName: 'Maria da Silva',
+          secondaryContactPhone: '11988887777',
+          secondaryContactRelation: 'Cônjuge',
+          preferredContactChannel: 'WHATSAPP',
+          preferredContactTime: 'AFTERNOON',
+        }),
+      );
+    });
+
     it('rethrows unrelated database errors', async () => {
       const deps = buildManager();
       deps.customerRepository.byDocument.mockResolvedValue(null);
@@ -125,6 +163,20 @@ describe('CustomerManager', () => {
         expect.not.objectContaining({ type: expect.anything(), document: expect.anything() }),
       );
       expect(result.customer.phone).toBe('11888887777');
+    });
+
+    it('updates only the Feature 6 fields that were sent, ignoring the rest', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId
+        .mockResolvedValueOnce(baseCustomer)
+        .mockResolvedValueOnce({ ...baseCustomer, secondaryContactName: 'Maria da Silva' });
+
+      await deps.manager.update(actingUser, { id: 'customer-1', secondaryContactName: 'Maria da Silva' });
+
+      expect(deps.customerRepository.update).toHaveBeenCalledWith(
+        'customer-1',
+        expect.objectContaining({ secondaryContactName: 'Maria da Silva' }),
+      );
     });
 
     it('rejects an update for a non-existent customer with 404', async () => {

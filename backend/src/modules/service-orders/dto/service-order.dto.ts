@@ -80,6 +80,10 @@ export class ServiceOrderListDto implements ServiceOrderListRequest {
   @IsUUID('4', { message: 'technician_id must be a valid id' })
   technicianId?: string;
 
+  @IsOptional()
+  @IsUUID('4', { message: 'customer_id must be a valid id' })
+  customerId?: string;
+
   @IsInt()
   @Min(0)
   offset: number = 0;

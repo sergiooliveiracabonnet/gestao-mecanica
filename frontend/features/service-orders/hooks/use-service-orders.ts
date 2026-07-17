@@ -13,11 +13,15 @@ import { serviceOrdersApi } from '../api/service-orders-api';
 const SERVICE_ORDERS_LIST_KEY = 'service-orders-list';
 const SERVICE_ORDER_KEY = 'service-order';
 
-export function useServiceOrdersList(request: ServiceOrderListRequest) {
+// `enabled` (default true) — Feature 6 (Cadastro de Cliente Expandido)
+// usa isso pra nunca chamar a API na aba Histórico em modo criação, onde
+// ainda não existe um customerId válido pra filtrar.
+export function useServiceOrdersList(request: ServiceOrderListRequest, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [SERVICE_ORDERS_LIST_KEY, request],
     queryFn: () => serviceOrdersApi.list(request),
     placeholderData: (previousData) => previousData,
+    enabled: options?.enabled ?? true,
   });
 }
 

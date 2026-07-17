@@ -130,6 +130,17 @@ model Customer {
   phone     String
   address   Json?
   notes     String?
+
+  // Feature 6 (Cadastro de Cliente Expandido). Todas opcionais, sem
+  // validação cruzada com `type` — ver spec cadastro-cliente-expandido.md.
+  rg                        String?
+  stateRegistration         String?   @map("state_registration")
+  secondaryContactName      String?   @map("secondary_contact_name")
+  secondaryContactPhone     String?   @map("secondary_contact_phone")
+  secondaryContactRelation  String?   @map("secondary_contact_relation")
+  preferredContactChannel   String?   @map("preferred_contact_channel")
+  preferredContactTime      String?   @map("preferred_contact_time")
+
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz

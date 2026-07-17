@@ -259,6 +259,7 @@ export class ServiceOrderManager {
       request.status,
       request.vehicleId,
       request.technicianId,
+      request.customerId,
     );
 
     const vehicleIds = [...new Set(items.map((item) => item.vehicleId))];

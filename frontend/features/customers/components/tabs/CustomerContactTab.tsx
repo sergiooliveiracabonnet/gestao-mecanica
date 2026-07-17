@@ -1,0 +1,59 @@
+'use client';
+
+import type { UseFormReturn } from 'react-hook-form';
+import { Input } from '@/components/ui/input';
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import type { CustomerFormValues } from '../CustomerFormModal';
+
+interface CustomerContactTabProps {
+  form: UseFormReturn<CustomerFormValues>;
+}
+
+export function CustomerContactTab({ form }: CustomerContactTabProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-sm text-text-muted">
+        Contato alternativo (cônjuge, sócio, motorista) pra quando quem atende o telefone principal não é o cliente.
+      </p>
+      <FormField
+        control={form.control}
+        name="secondaryContactName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Nome (opcional)</FormLabel>
+            <FormControl>
+              <Input placeholder="Nome do contato" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="secondaryContactPhone"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Telefone (opcional)</FormLabel>
+            <FormControl>
+              <Input placeholder="(11) 99999-9999" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="secondaryContactRelation"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Relação (opcional)</FormLabel>
+            <FormControl>
+              <Input placeholder="Cônjuge, motorista, sócio..." {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+}

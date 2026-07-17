@@ -460,4 +460,50 @@ describe('Service Orders (e2e)', () => {
       .send({ offset: 0, limit: 100 });
     expect(listFromB.body.items.some((item: { id: string }) => item.id === id)).toBe(false);
   });
+
+  it('filters by customer_id — Feature 6 (Cadastro de Cliente Expandido) Histórico tab', async () => {
+    const suffix = `customerfilter-${Date.now()}`;
+    const admin = await signupAdmin(suffix);
+    const customerA = await createCustomer(admin.access_token, `${suffix}-a`);
+    const customerB = await createCustomer(admin.access_token, `${suffix}-b`);
+    const vehicleA = await createVehicle(admin.access_token, customerA, `${suffix}-a`);
+    const vehicleB = await createVehicle(admin.access_token, customerB, `${suffix}-b`);
+
+    const createdA = await request(app.getHttpServer())
+      .post('/api/v1/service-orders')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ vehicle_id: vehicleA });
+    await request(app.getHttpServer())
+      .post('/api/v1/service-orders')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ vehicle_id: vehicleB });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/service-orders/list')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ offset: 0, limit: 100, customer_id: customerA });
+
+    expect(response.status).toBe(200);
+    expect(response.body.items).toHaveLength(1);
+    expect(response.body.items[0].id).toBe(createdA.body.service_order.id);
+  });
+
+  it('customer_id filter is tenant-isolated — a customer_id from another tenant returns an empty list', async () => {
+    const adminA = await signupAdmin(`customeriso-a-${Date.now()}`);
+    const adminB = await signupAdmin(`customeriso-b-${Date.now()}`);
+    const customerA = await createCustomer(adminA.access_token, 'customeriso');
+    const vehicleA = await createVehicle(adminA.access_token, customerA, 'customeriso');
+    await request(app.getHttpServer())
+      .post('/api/v1/service-orders')
+      .set('Authorization', `Bearer ${adminA.access_token}`)
+      .send({ vehicle_id: vehicleA });
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/service-orders/list')
+      .set('Authorization', `Bearer ${adminB.access_token}`)
+      .send({ offset: 0, limit: 100, customer_id: customerA });
+
+    expect(response.status).toBe(200);
+    expect(response.body.items).toHaveLength(0);
+  });
 });

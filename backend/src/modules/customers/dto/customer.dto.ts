@@ -1,8 +1,10 @@
 import { IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
-import { CUSTOMER_TYPES } from '@oficina/contracts';
+import { CUSTOMER_CONTACT_CHANNELS, CUSTOMER_CONTACT_TIMES, CUSTOMER_TYPES } from '@oficina/contracts';
 import type {
   CreateCustomerRequest,
   CustomerAddress,
+  CustomerContactChannel,
+  CustomerContactTime,
   CustomerListRequest,
   DeleteCustomerRequest,
   UpdateCustomerRequest,
@@ -35,6 +37,34 @@ export class CreateCustomerDto implements CreateCustomerRequest {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  rg?: string;
+
+  @IsOptional()
+  @IsString()
+  stateRegistration?: string;
+
+  @IsOptional()
+  @IsString()
+  secondaryContactName?: string;
+
+  @IsOptional()
+  @IsString()
+  secondaryContactPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  secondaryContactRelation?: string;
+
+  @IsOptional()
+  @IsIn(CUSTOMER_CONTACT_CHANNELS, { message: 'preferred_contact_channel must be one of PHONE, WHATSAPP, EMAIL, SMS' })
+  preferredContactChannel?: CustomerContactChannel;
+
+  @IsOptional()
+  @IsIn(CUSTOMER_CONTACT_TIMES, { message: 'preferred_contact_time must be one of MORNING, AFTERNOON, EVENING, ANY' })
+  preferredContactTime?: CustomerContactTime;
 }
 
 export class UpdateCustomerDto implements UpdateCustomerRequest {
@@ -61,6 +91,34 @@ export class UpdateCustomerDto implements UpdateCustomerRequest {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  rg?: string;
+
+  @IsOptional()
+  @IsString()
+  stateRegistration?: string;
+
+  @IsOptional()
+  @IsString()
+  secondaryContactName?: string;
+
+  @IsOptional()
+  @IsString()
+  secondaryContactPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  secondaryContactRelation?: string;
+
+  @IsOptional()
+  @IsIn(CUSTOMER_CONTACT_CHANNELS, { message: 'preferred_contact_channel must be one of PHONE, WHATSAPP, EMAIL, SMS' })
+  preferredContactChannel?: CustomerContactChannel;
+
+  @IsOptional()
+  @IsIn(CUSTOMER_CONTACT_TIMES, { message: 'preferred_contact_time must be one of MORNING, AFTERNOON, EVENING, ANY' })
+  preferredContactTime?: CustomerContactTime;
 }
 
 export class DeleteCustomerDto implements DeleteCustomerRequest {

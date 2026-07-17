@@ -28,4 +28,6 @@ export interface ServiceOrderListRequest extends PageableRequest {
   status?: ServiceOrderStatus;
   vehicleId?: string;
   technicianId?: string;
+  // Feature 6 (Cadastro de Cliente Expandido) — aba Histórico do cliente.
+  customerId?: string;
 }

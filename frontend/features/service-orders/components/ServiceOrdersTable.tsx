@@ -11,9 +11,16 @@ interface ServiceOrdersTableProps {
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  emptyMessage?: string;
 }
 
-export function ServiceOrdersTable({ items, isLoading, isError, onRetry }: ServiceOrdersTableProps) {
+export function ServiceOrdersTable({
+  items,
+  isLoading,
+  isError,
+  onRetry,
+  emptyMessage = 'Nenhuma ordem de serviço ainda. Cadastre a primeira clicando em "Nova OS".',
+}: ServiceOrdersTableProps) {
   if (isLoading) {
     return (
       <div role="status" aria-label="Carregando ordens de serviço" className="space-y-2">
@@ -37,9 +44,7 @@ export function ServiceOrdersTable({ items, isLoading, isError, onRetry }: Servi
 
   if (items.length === 0) {
     return (
-      <div className="rounded-card border border-border bg-surface p-8 text-center text-sm text-text-muted">
-        Nenhuma ordem de serviço ainda. Cadastre a primeira clicando em &quot;Nova OS&quot;.
-      </div>
+      <div className="rounded-card border border-border bg-surface p-8 text-center text-sm text-text-muted">{emptyMessage}</div>
     );
   }
 

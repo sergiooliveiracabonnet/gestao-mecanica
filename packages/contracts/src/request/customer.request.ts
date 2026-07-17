@@ -1,5 +1,5 @@
 import type { PageableRequest } from '../response/pagination.response';
-import type { CustomerAddress, CustomerType } from '../response/customer.response';
+import type { CustomerAddress, CustomerContactChannel, CustomerContactTime, CustomerType } from '../response/customer.response';
 
 export interface CreateCustomerRequest {
   type: CustomerType;
@@ -9,6 +9,13 @@ export interface CreateCustomerRequest {
   email?: string;
   address?: CustomerAddress;
   notes?: string;
+  rg?: string;
+  stateRegistration?: string;
+  secondaryContactName?: string;
+  secondaryContactPhone?: string;
+  secondaryContactRelation?: string;
+  preferredContactChannel?: CustomerContactChannel;
+  preferredContactTime?: CustomerContactTime;
 }
 
 export interface UpdateCustomerRequest {
@@ -18,6 +25,13 @@ export interface UpdateCustomerRequest {
   email?: string;
   address?: CustomerAddress;
   notes?: string;
+  rg?: string;
+  stateRegistration?: string;
+  secondaryContactName?: string;
+  secondaryContactPhone?: string;
+  secondaryContactRelation?: string;
+  preferredContactChannel?: CustomerContactChannel;
+  preferredContactTime?: CustomerContactTime;
 }
 
 export interface DeleteCustomerRequest {
