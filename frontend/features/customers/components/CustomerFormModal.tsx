@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateCustomer, useUpdateCustomer } from '../hooks/use-customers';
 import { CustomerGeneralTab } from './tabs/CustomerGeneralTab';
@@ -76,6 +76,13 @@ const EMPTY_VALUES: CustomerFormValues = {
   preferredContactTime: undefined,
 };
 
+const GUIDED_STEPS = [
+  { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'address'] },
+  { id: 'contact', label: 'Contato', fields: ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'] },
+  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime'] },
+  { id: 'notes', label: 'Observações', fields: ['notes'] },
+] as const;
+
 // Campos em branco não devem virar `{ street: "", ... }` no payload — nem
 // um objeto totalmente vazio quando o cliente não preencheu nenhum campo de
 // endereço (o backend trata `undefined` como "não mudou", ver UpdateCustomerInput).
@@ -101,6 +108,7 @@ interface CustomerFormModalProps {
 
 export function CustomerFormModal({ open, onOpenChange, customer, onCreated, presentation = 'modal' }: CustomerFormModalProps) {
   const isEditing = Boolean(customer);
+  const isGuidedCreate = presentation === 'page' && !isEditing;
   const [activeTab, setActiveTab] = useState('general');
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
@@ -190,6 +198,18 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     }
   }
 
+  async function goToNextGuidedStep() {
+    const currentIndex = GUIDED_STEPS.findIndex((item) => item.id === activeTab);
+    if (currentIndex < 0 || currentIndex === GUIDED_STEPS.length - 1) return;
+    const valid = await form.trigger(GUIDED_STEPS[currentIndex].fields as never);
+    if (valid) setActiveTab(GUIDED_STEPS[currentIndex + 1].id);
+  }
+
+  function goToPreviousGuidedStep() {
+    const currentIndex = GUIDED_STEPS.findIndex((item) => item.id === activeTab);
+    if (currentIndex > 0) setActiveTab(GUIDED_STEPS[currentIndex - 1].id);
+  }
+
   const hasGeneralErrors = ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'address'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
   const hasContactErrors = ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
   const hasPreferenceErrors = ['preferredContactChannel', 'preferredContactTime'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
@@ -208,7 +228,22 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            {isGuidedCreate ? (
+              <div className="flex flex-col gap-5">
+                <ol aria-label="Etapas do cadastro do cliente" className="grid gap-2 sm:grid-cols-4">
+                  {GUIDED_STEPS.map((item, index) => {
+                    const currentIndex = GUIDED_STEPS.findIndex((stepItem) => stepItem.id === activeTab);
+                    const complete = index < currentIndex;
+                    const active = item.id === activeTab;
+                    return <li key={item.id} className={`flex items-center gap-2 rounded-button border px-3 py-2 text-xs font-semibold ${active ? 'border-primary/40 bg-primary-subtle text-primary-strong' : complete ? 'border-success/30 bg-success-subtle text-success-strong' : 'border-border bg-surface text-text-muted'}`} aria-current={active ? 'step' : undefined}><span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${active ? 'bg-primary text-primary-foreground' : complete ? 'bg-success text-white' : 'bg-muted text-text-muted'}`}>{complete ? <Check className="size-3.5" aria-hidden="true" /> : index + 1}</span>{item.label}</li>;
+                  })}
+                </ol>
+                {activeTab === 'general' && <CustomerGeneralTab form={form} isEditing={false} />}
+                {activeTab === 'contact' && <CustomerContactTab form={form} />}
+                {activeTab === 'preferences' && <CustomerPreferencesTab form={form} />}
+                {activeTab === 'notes' && <CustomerNotesTab form={form} />}
+              </div>
+            ) : <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="flex w-full justify-start gap-1 overflow-x-auto p-1">
                 <TabsTrigger className="shrink-0" value="general">Dados Gerais{hasGeneralErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
                 <TabsTrigger className="shrink-0" value="contact">Contato{hasContactErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
@@ -231,14 +266,15 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
               <TabsContent value="history">
                 <CustomerHistoryTab customer={customer} />
               </TabsContent>
-            </Tabs>
+            </Tabs>}
             <DialogFooter className="gap-2 border-t border-border pt-4 sm:gap-2">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isPending} className="sm:min-w-40">
+              {isGuidedCreate && activeTab !== 'general' && <Button type="button" variant="outline" onClick={goToPreviousGuidedStep} disabled={isPending}><ChevronLeft className="size-4" aria-hidden="true" /> Voltar</Button>}
+              {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={goToNextGuidedStep} disabled={isPending} className="sm:min-w-32">Próximo <ChevronRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending} className="sm:min-w-40">
                 {isPending ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
-              </Button>
+              </Button>}
             </DialogFooter>
           </form>
         </Form>

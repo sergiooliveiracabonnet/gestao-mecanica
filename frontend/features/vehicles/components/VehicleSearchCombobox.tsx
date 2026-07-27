@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useEffect, useId, useState, type ComponentPropsWithoutRef, type KeyboardEvent } from 'react';
+import { forwardRef, useEffect, useId, useRef, useState, type ComponentPropsWithoutRef, type KeyboardEvent } from 'react';
 import type { VehicleListItemResponse } from '@oficina/contracts';
 import { Input } from '@/components/ui/input';
 import { useVehiclesList } from '@/features/vehicles/hooks/use-vehicles';
@@ -34,6 +34,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const previousCustomerId = useRef<string | undefined>(undefined);
 
   // Reseta o texto exibido quando o form limpa o campo externamente (ex:
   // reabrir o modal) — não reage a toda mudança de `value`, só quando ele
@@ -53,19 +54,37 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
     return () => clearTimeout(timeout);
   }, [query]);
 
+  useEffect(() => {
+    if (!customerId) {
+      setIsOpen(false);
+      previousCustomerId.current = customerId;
+      return;
+    }
+
+    // Ao trocar o cliente, reinicia o veículo e já apresenta a lista dele.
+    if (previousCustomerId.current !== undefined && previousCustomerId.current !== customerId) {
+      setQuery('');
+      setConfirmedLabel('');
+      onChange('');
+    }
+    setIsOpen(true);
+    previousCustomerId.current = customerId;
+  }, [customerId, onChange]);
+
   const isEditingAfterSelection = query !== confirmedLabel;
   const canSearch = debouncedQuery.length >= MIN_SEARCH_LENGTH && isEditingAfterSelection;
+  const canLoadCustomerVehicles = Boolean(customerId) && (debouncedQuery.length === 0 || canSearch) && isOpen;
 
   // `matchOwner: true` — só este combobox (abertura de OS) casa a busca
   // também pelo nome/documento do cliente dono; a tela de Veículos usa
   // useVehiclesList sem essa flag e mantém a busca original (ver
   // VehicleListRequest.matchOwner).
   const { data, isFetching } = useVehiclesList(
-    { offset: 0, limit: RESULTS_LIMIT, search: debouncedQuery, customerId, matchOwner: true },
-    { enabled: canSearch && isOpen },
+    { offset: 0, limit: RESULTS_LIMIT, search: debouncedQuery || undefined, customerId, matchOwner: true },
+    { enabled: canLoadCustomerVehicles || (canSearch && isOpen) },
   );
 
-  const results = data?.items ?? [];
+  const results = (canLoadCustomerVehicles || (canSearch && isOpen)) ? data?.items ?? [] : [];
 
   useEffect(() => {
     setHighlightedIndex(results.length > 0 ? 0 : -1);
@@ -124,7 +143,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
         onBlur={() => setTimeout(() => setIsOpen(false), 150)}
         onKeyDown={handleKeyDown}
       />
-      {isOpen && canSearch && (
+      {isOpen && (canLoadCustomerVehicles || canSearch) && (
         <ul
           id={listboxId}
           role="listbox"

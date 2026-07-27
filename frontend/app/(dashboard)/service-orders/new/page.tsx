@@ -49,11 +49,11 @@ export default function NewServiceOrderPage() {
           <div className="flex items-center gap-2 rounded-button border border-primary/15 bg-primary-subtle px-3 py-2 text-xs font-semibold text-primary-strong"><CalendarDays className="size-4" aria-hidden="true" /> Agendamento em breve</div>
         </div>
 
-        <nav aria-label="Etapas do novo atendimento" className="mt-5 grid gap-2 sm:grid-cols-2">
+        <nav aria-label="Etapas do novo atendimento" className="mt-5 grid gap-2 sm:grid-cols-3">
           {STEPS.map((item, index) => {
             const Icon = item.icon;
             const active = step === item.id;
-            const complete = (step === 'vehicle' && index === 0) || (step === 'order' && index < 2) || step === 'done';
+            const complete = step === 'done' || (item.id === 'customer' && Boolean(customer)) || (item.id === 'vehicle' && Boolean(vehicle));
             return <div key={item.id} className={`relative rounded-card border px-3 py-2.5 transition-colors ${active ? 'border-primary/40 bg-primary-subtle' : complete ? 'border-success/30 bg-success-subtle' : 'border-border bg-surface'}`}><div className="flex items-center gap-2.5"><span className={`flex size-8 shrink-0 items-center justify-center rounded-button ${active ? 'bg-primary text-primary-foreground' : complete ? 'bg-success text-white' : 'bg-muted text-text-muted'}`}>{complete ? <Check className="size-4" aria-hidden="true" /> : <Icon className="size-4" aria-hidden="true" />}</span><span><span className="block text-sm font-bold text-text">{index + 1}. {item.label}</span><span className="mt-0.5 block text-xs text-text-muted">{item.description}</span></span></div></div>;
           })}
         </nav>

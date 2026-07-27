@@ -42,6 +42,14 @@ describe('VehicleSearchCombobox', () => {
     expect(vehiclesApi.list).not.toHaveBeenCalled();
   });
 
+  it('loads the selected customer vehicles as soon as the customer is provided', async () => {
+    vi.mocked(vehiclesApi.list).mockResolvedValue({ items: [vehicle], total: 1, offset: 0, limit: 20, hasMore: false });
+    renderWithClient(<VehicleSearchCombobox value="" customerId="c1" onChange={vi.fn()} />);
+
+    expect(await screen.findByRole('option', { name: /Fiat Uno/ })).toBeInTheDocument();
+    expect(vehiclesApi.list).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'c1', search: undefined }));
+  });
+
   it('debounces and searches after typing, showing matching results', async () => {
     vi.mocked(vehiclesApi.list).mockResolvedValue({ items: [vehicle], total: 1, offset: 0, limit: 20, hasMore: false });
     const user = userEvent.setup();
