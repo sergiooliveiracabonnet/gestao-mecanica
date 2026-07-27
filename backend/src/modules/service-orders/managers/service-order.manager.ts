@@ -109,7 +109,7 @@ export class ServiceOrderManager {
     // OS recém-criada nunca tem itens ainda — evita uma query desnecessária
     // (diferente de update/transition/delete, que operam numa OS que já pode
     // ter itens lançados).
-    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, undefined, [], 0) };
+    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, { items: [], totalAmountCentsOverride: 0 }) };
   }
 
   async update(actingUser: AuthenticatedUser, request: UpdateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -155,7 +155,7 @@ export class ServiceOrderManager {
       metadata: {},
     });
 
-    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, undefined, undefined, totalAmountCents) };
+    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
   }
 
   async transition(actingUser: AuthenticatedUser, request: TransitionServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -230,7 +230,7 @@ export class ServiceOrderManager {
       metadata: { fromStatus, toStatus: request.toStatus },
     });
 
-    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, undefined, undefined, totalAmountCents) };
+    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
   }
 
   async delete(actingUser: AuthenticatedUser, id: string): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -260,7 +260,7 @@ export class ServiceOrderManager {
       metadata: {},
     });
 
-    return { serviceOrder: this.toResponse(existing, vehicle, customer, technician, undefined, undefined, totalAmountCents) };
+    return { serviceOrder: this.toResponse(existing, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
   }
 
   async getById(id: string): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -277,7 +277,7 @@ export class ServiceOrderManager {
     ]);
     const customer = await this.customerRepository.byId(serviceOrder.customerId);
 
-    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, history, items) };
+    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, { history, items }) };
   }
 
   async list(request: ServiceOrderListRequest): Promise<PaginationData<ServiceOrderResponse>> {
@@ -311,9 +311,7 @@ export class ServiceOrderManager {
           vehicleById.get(serviceOrder.vehicleId) ?? null,
           customerById.get(serviceOrder.customerId) ?? null,
           serviceOrder.technicianId ? (technicianById.get(serviceOrder.technicianId) ?? null) : null,
-          undefined,
-          undefined,
-          totalsByOrderId.get(serviceOrder.id) ?? 0,
+          { totalAmountCentsOverride: totalsByOrderId.get(serviceOrder.id) ?? 0 },
         ),
       ),
       total,
@@ -412,18 +410,21 @@ export class ServiceOrderManager {
     vehicle: VehicleEntity | null,
     customer: CustomerEntity | null,
     technician: UserEntity | null,
-    history?: ServiceOrderStatusHistoryEntity[],
-    items?: ServiceOrderItemEntity[],
-    totalAmountCentsOverride?: number,
+    options?: {
+      history?: ServiceOrderStatusHistoryEntity[];
+      // `items` só populado por getById (mesmo padrão de `history`) — quando
+      // presente, o total é somado a partir dele; senão usa
+      // `totalAmountCentsOverride`, já calculado em lote/individualmente
+      // pelo chamador (list/create/update/transition/delete). Nunca um
+      // campo denormalizado (ver plano itens-e-preco-da-os.md).
+      items?: ServiceOrderItemEntity[];
+      totalAmountCentsOverride?: number;
+    },
   ): ServiceOrderResponse {
-    // `items` só populado por getById (mesmo padrão de `statusHistory`) —
-    // quando presente, o total é somado a partir dele; senão usa o valor já
-    // calculado em lote/individualmente pelo chamador (list/create/update/
-    // transition/delete), nunca um campo denormalizado (ver plano).
-    const itemResponses = items?.map((item) => this.toItemResponse(item));
+    const itemResponses = options?.items?.map((item) => this.toItemResponse(item));
     const totalAmountCents = itemResponses
       ? itemResponses.reduce((sum, item) => sum + item.lineTotalCents, 0)
-      : (totalAmountCentsOverride ?? 0);
+      : (options?.totalAmountCentsOverride ?? 0);
 
     return {
       id: serviceOrder.id,
@@ -442,7 +443,7 @@ export class ServiceOrderManager {
       openedAt: serviceOrder.openedAt.toISOString(),
       closedAt: serviceOrder.closedAt?.toISOString(),
       createdAt: serviceOrder.createdAt.toISOString(),
-      statusHistory: history?.map((item) => this.toHistoryItem(item)),
+      statusHistory: options?.history?.map((item) => this.toHistoryItem(item)),
       totalAmountCents,
       items: itemResponses,
     };

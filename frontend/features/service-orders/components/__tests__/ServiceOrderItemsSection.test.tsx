@@ -118,6 +118,45 @@ describe('ServiceOrderItemsSection', () => {
     await waitFor(() => expect(screen.getByPlaceholderText('Descrição')).toHaveValue(''));
   });
 
+  it('edits an item and calls the update mutation with the recalculated values', async () => {
+    vi.mocked(serviceOrderItemsApi.update).mockResolvedValue({
+      item: { ...baseServiceOrder.items![0], quantity: 3, lineTotalCents: 15000 },
+    });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+
+    const [editButton] = screen.getAllByRole('button', { name: /editar/i });
+    await user.click(editButton);
+
+    const quantityInput = screen.getByLabelText('Quantidade');
+    await user.clear(quantityInput);
+    await user.type(quantityInput, '3');
+    await user.click(screen.getByRole('button', { name: /salvar/i }));
+
+    await waitFor(() =>
+      expect(serviceOrderItemsApi.update).toHaveBeenCalledWith({
+        id: 'item-1',
+        type: 'PART',
+        description: 'Filtro de óleo',
+        quantity: 3,
+        unitPriceCents: 5000,
+      }),
+    );
+    await waitFor(() => expect(screen.queryByLabelText('Quantidade')).not.toBeInTheDocument());
+  });
+
+  it('cancelling an edit discards changes without calling the update mutation', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+
+    const [editButton] = screen.getAllByRole('button', { name: /editar/i });
+    await user.click(editButton);
+    await user.click(screen.getByRole('button', { name: /cancelar/i }));
+
+    expect(serviceOrderItemsApi.update).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Quantidade')).not.toBeInTheDocument();
+  });
+
   it('removing an item calls the delete mutation', async () => {
     vi.mocked(serviceOrderItemsApi.delete).mockResolvedValue({ item: baseServiceOrder.items![0] });
     const user = userEvent.setup();

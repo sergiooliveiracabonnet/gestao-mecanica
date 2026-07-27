@@ -18,7 +18,12 @@ export class CreateServiceOrderItemDto implements CreateServiceOrderItemRequest 
   @IsNotEmpty({ message: 'description is required' })
   description!: string;
 
-  @IsNumber({}, { message: 'quantity must be a number' })
+  // maxDecimalPlaces: 2 casa a validação com a coluna NUMERIC(10,2) — Edge
+  // Case 6 da spec ("quantidade fracionária com muitas casas decimais").
+  // Sem isso o front-end poderia enviar 1.239 e só a coluna do banco
+  // arredondaria silenciosamente, sem nenhum teste garantindo esse
+  // comportamento.
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'quantity must have at most 2 decimal places' })
   @Min(MIN_QUANTITY, { message: 'quantity must be greater than zero' })
   quantity!: number;
 
@@ -41,7 +46,12 @@ export class UpdateServiceOrderItemDto implements UpdateServiceOrderItemRequest 
   description?: string;
 
   @IsOptional()
-  @IsNumber({}, { message: 'quantity must be a number' })
+  // maxDecimalPlaces: 2 casa a validação com a coluna NUMERIC(10,2) — Edge
+  // Case 6 da spec ("quantidade fracionária com muitas casas decimais").
+  // Sem isso o front-end poderia enviar 1.239 e só a coluna do banco
+  // arredondaria silenciosamente, sem nenhum teste garantindo esse
+  // comportamento.
+  @IsNumber({ maxDecimalPlaces: 2 }, { message: 'quantity must have at most 2 decimal places' })
   @Min(MIN_QUANTITY, { message: 'quantity must be greater than zero' })
   quantity?: number;
 

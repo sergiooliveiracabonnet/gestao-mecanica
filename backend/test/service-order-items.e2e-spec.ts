@@ -253,6 +253,18 @@ describe('Service Order Items (e2e)', () => {
     expect(negativePrice.status).toBe(400);
   });
 
+  it('rejects a quantity with more than 2 decimal places with 400 (Edge Case 6)', async () => {
+    const admin = await signupAdmin(`decimals-${Date.now()}`);
+    const serviceOrderId = await createServiceOrder(admin.access_token, 'decimals');
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/service-orders/items')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ service_order_id: serviceOrderId, type: 'PART', description: 'Óleo', quantity: 1.239, unit_price_cents: 100 });
+
+    expect(response.status).toBe(400);
+  });
+
   it('rejects adding an item to a service order that belongs to another tenant with 404', async () => {
     const adminA = await signupAdmin(`crossA-${Date.now()}`);
     const adminB = await signupAdmin(`crossB-${Date.now()}`);
