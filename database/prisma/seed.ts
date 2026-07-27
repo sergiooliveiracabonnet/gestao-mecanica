@@ -2,19 +2,52 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const ROLES = ['ADMIN', 'MANAGER', 'MECHANIC', 'FRONT_DESK'] as const;
+const ROLES = ['ADMIN', 'MANAGER', 'MECHANIC', 'FRONT_DESK', 'FINANCE'] as const;
 
 const PERMISSIONS: Array<{ key: string; description: string }> = [
-  { key: 'users.invite', description: 'Convidar novos usuários para o tenant' },
-  { key: 'users.list', description: 'Listar usuários do tenant' },
-  { key: 'users.manage', description: 'Gerenciar (desabilitar/reativar) usuários do tenant' },
+  { key: 'dashboard.view', description: 'Visualizar a operação da oficina' },
+  { key: 'finance.view', description: 'Visualizar indicadores e relatórios financeiros' },
+  { key: 'finance.manage', description: 'Criar e alterar categorias e lançamentos financeiros' },
+  { key: 'service_orders.view', description: 'Visualizar ordens de serviço' },
+  { key: 'service_orders.manage', description: 'Criar e alterar ordens de serviço' },
+  { key: 'service_orders.prices', description: 'Visualizar e alterar preços da OS' },
+  { key: 'receipts.manage', description: 'Confirmar e estornar recebimentos' },
+  { key: 'appointments.view', description: 'Visualizar agenda' },
+  { key: 'appointments.manage', description: 'Criar e alterar agendamentos' },
+  { key: 'customers.view', description: 'Visualizar clientes' },
+  { key: 'customers.manage', description: 'Criar e alterar clientes' },
+  { key: 'vehicles.view', description: 'Visualizar veículos' },
+  { key: 'vehicles.manage', description: 'Criar e alterar veículos' },
+  { key: 'alerts.view', description: 'Visualizar alertas' },
+  { key: 'alerts.manage', description: 'Resolver alertas' },
+  { key: 'team.view', description: 'Visualizar equipe' },
+  { key: 'team.manage', description: 'Convidar e alterar usuários' },
+  { key: 'profiles.manage', description: 'Criar perfis e definir permissões' },
+  { key: 'settings.view', description: 'Visualizar configurações da empresa' },
+  { key: 'settings.manage', description: 'Alterar configurações da empresa e integrações' },
 ];
 
 const ROLE_PERMISSIONS: Record<(typeof ROLES)[number], string[]> = {
-  ADMIN: ['users.invite', 'users.list', 'users.manage'],
-  MANAGER: ['users.invite', 'users.list'],
-  MECHANIC: [],
-  FRONT_DESK: [],
+  ADMIN: PERMISSIONS.map(({ key }) => key),
+  MANAGER: [
+    'dashboard.view', 'service_orders.view', 'service_orders.manage', 'service_orders.prices',
+    'receipts.manage', 'appointments.view', 'appointments.manage', 'customers.view',
+    'customers.manage', 'vehicles.view', 'vehicles.manage', 'alerts.view', 'alerts.manage',
+    'team.view', 'team.manage',
+  ],
+  MECHANIC: [
+    'dashboard.view', 'service_orders.view', 'service_orders.manage', 'appointments.view',
+    'customers.view', 'vehicles.view',
+  ],
+  FRONT_DESK: [
+    'dashboard.view', 'service_orders.view', 'service_orders.manage', 'service_orders.prices',
+    'receipts.manage', 'appointments.view', 'appointments.manage', 'customers.view',
+    'customers.manage', 'vehicles.view', 'vehicles.manage', 'alerts.view', 'alerts.manage',
+  ],
+  FINANCE: [
+    'dashboard.view', 'finance.view', 'finance.manage', 'receipts.manage',
+    'service_orders.view', 'customers.view',
+  ],
 };
 
 async function main() {
