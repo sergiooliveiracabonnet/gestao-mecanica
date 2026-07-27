@@ -46,6 +46,11 @@ docker compose -f docker/docker-compose.yml --project-directory . up
 - Frontend: http://localhost:3000
 - Via NGINX (proxy reverso): http://localhost:8080
 
+## Produção em Debian
+
+A stack de produção isolada, com HTTPS automático, migrações e backup, está
+documentada em [`docs/deployment-debian.md`](docs/deployment-debian.md).
+
 ## Comandos úteis
 
 | Comando | O que faz |

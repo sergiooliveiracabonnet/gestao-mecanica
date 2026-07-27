@@ -10,6 +10,8 @@ COPY packages/contracts/package.json ./packages/contracts/package.json
 RUN pnpm install --frozen-lockfile --filter=@oficina/frontend...
 
 FROM base AS build
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
 COPY --from=deps /app/packages/contracts/node_modules ./packages/contracts/node_modules

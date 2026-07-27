@@ -14,6 +14,8 @@ uploads/
 
 # env
 .env
+.env.production
+backups/
 .env.local
 !.env.example
 
