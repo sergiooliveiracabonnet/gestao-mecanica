@@ -110,6 +110,24 @@ export class CustomerRepository {
     return customers.map((customer) => customer.id);
   }
 
+  // Usado por VehicleManager.list pra casar veículos pelo nome/documento do
+  // cliente dono — sem relação FK entre Vehicle e Customer (SCHEMA.md: sem
+  // REFERENCES), o casamento é em duas etapas: aqui só os ids que batem;
+  // VehicleRepository.listByTenant faz o OR com marca/modelo/placa. `limit`
+  // é uma rede de segurança contra uma cláusula IN gigante se o termo bater
+  // em muitos clientes.
+  async searchIdsByNameOrDocument(search: string, limit = 500) {
+    const customers = await this.prisma.client.customer.findMany({
+      where: {
+        deletedAt: null,
+        OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { document: { contains: search } }],
+      },
+      select: { id: true },
+      take: limit,
+    });
+    return customers.map((customer) => customer.id);
+  }
+
   // Escopado ao tenant automaticamente pela extensão — checagem de
   // unicidade do documento é sempre POR TENANT (ver schema.prisma).
   async byDocument(document: string) {

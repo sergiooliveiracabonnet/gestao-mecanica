@@ -164,7 +164,17 @@ export class VehicleManager {
   }
 
   async list(request: VehicleListRequest): Promise<PaginationData<VehicleListItemResponse>> {
-    const { items, total } = await this.vehicleRepository.listByTenant(request.offset, request.limit, request.search, request.customerId);
+    // Além de marca/modelo/placa, `search` também casa pelo nome/documento
+    // do cliente dono do veículo (ver CustomerRepository.searchIdsByNameOrDocument).
+    const matchingCustomerIds = request.search ? await this.customerRepository.searchIdsByNameOrDocument(request.search) : undefined;
+
+    const { items, total } = await this.vehicleRepository.listByTenant(
+      request.offset,
+      request.limit,
+      request.search,
+      request.customerId,
+      matchingCustomerIds,
+    );
 
     const customerIds = [...new Set(items.map((item) => item.customerId))];
     const customers = await this.customerRepository.byIds(customerIds);
