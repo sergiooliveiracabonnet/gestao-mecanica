@@ -252,3 +252,31 @@ model FipeModel {
   @@index([brandId])
   @@map("fipe_models")
 }
+
+// Feature: Motor de Manutenção Preventiva. tenantId presente e entra em
+// TENANT_SCOPED_MODELS (diferente de FipeBrand/FipeModel — aqui É dado de
+// tenant). O job diário (MaintenanceAlertScanProcessor) sempre acessa via
+// `prisma.unscoped` com tenantId explícito, porque roda fora do
+// AsyncLocalStorage de uma requisição (mesmo padrão de AuditLogRepository);
+// só o Controller/Manager (list, resolve) e o hook de auto-resolve em
+// ServiceOrderManager.transition usam `prisma.client`/`tx` escopado. Sem
+// deleted_at: alertas nunca são apagados, só resolvidos (campo `status`) —
+// ver spec motor-manutencao-preventiva.md.
+model MaintenanceAlert {
+  id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId      String    @map("tenant_id") @db.Uuid
+  vehicleId     String    @map("vehicle_id") @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  referenceDate DateTime  @map("reference_date") @db.Timestamptz
+  status        String    @default("OPEN")
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz
+  resolvedBy    String?   @map("resolved_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+
+  // Chave de idempotência do job: no máximo um alerta por ciclo de
+  // manutenção de cada veículo (Edge Cases 2/3 da spec).
+  @@unique([vehicleId, referenceDate])
+  @@index([tenantId, status])
+  @@map("maintenance_alerts")
+}
