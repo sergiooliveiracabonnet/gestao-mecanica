@@ -73,7 +73,13 @@ describe('MaintenanceAlertsTable', () => {
   });
 
   it('resolving an alert calls the mutation and disables the button while pending', async () => {
-    vi.mocked(maintenanceAlertsApi.resolve).mockResolvedValue({ alert: { ...alert, status: 'RESOLVED' } as never });
+    let resolveMutation: (value: { alert: MaintenanceAlertListItemResponse }) => void = () => {};
+    vi.mocked(maintenanceAlertsApi.resolve).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveMutation = resolve;
+        }),
+    );
     const user = userEvent.setup();
     renderWithClient(<MaintenanceAlertsTable items={[alert]} isLoading={false} isError={false} onRetry={noop} />);
 
@@ -81,5 +87,8 @@ describe('MaintenanceAlertsTable', () => {
     await user.click(button);
 
     expect(maintenanceAlertsApi.resolve).toHaveBeenCalledWith({ id: 'alert-1' });
+    expect(button).toBeDisabled();
+
+    resolveMutation({ alert: { ...alert, status: 'RESOLVED' } });
   });
 });

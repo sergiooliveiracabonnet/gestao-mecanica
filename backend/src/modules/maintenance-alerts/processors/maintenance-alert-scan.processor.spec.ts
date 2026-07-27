@@ -4,16 +4,22 @@ function buildProcessor() {
   const tenantRepository = { listAllUnscoped: jest.fn() };
   const vehicleRepository = { listActiveForTenantUnscoped: jest.fn() };
   const serviceOrderRepository = { lastDeliveredClosedAtUnscoped: jest.fn() };
+  // Default: todo customerId recebido é considerado ativo — cobre os testes
+  // que não se importam com este filtro sem precisar mockar em cada um.
+  const customerRepository = {
+    activeIdsAmongUnscoped: jest.fn((ids: string[]) => Promise.resolve(ids)),
+  };
   const maintenanceAlertRepository = { upsertOpenAlert: jest.fn() };
 
   const processor = new MaintenanceAlertScanProcessor(
     tenantRepository as never,
     vehicleRepository as never,
     serviceOrderRepository as never,
+    customerRepository as never,
     maintenanceAlertRepository as never,
   );
 
-  return { processor, tenantRepository, vehicleRepository, serviceOrderRepository, maintenanceAlertRepository };
+  return { processor, tenantRepository, vehicleRepository, serviceOrderRepository, customerRepository, maintenanceAlertRepository };
 }
 
 function job(now: string) {
@@ -98,6 +104,23 @@ describe('MaintenanceAlertScanProcessor', () => {
     expect(deps.maintenanceAlertRepository.upsertOpenAlert).not.toHaveBeenCalledWith(
       expect.objectContaining({ vehicleId: 'vehicle-broken' }),
     );
+  });
+
+  it('skips a vehicle whose customer is soft-deleted (Edge Case 5)', async () => {
+    const deps = buildProcessor();
+    deps.tenantRepository.listAllUnscoped.mockImplementation(onePageThenEmpty([{ id: 'tenant-1' }]));
+    deps.vehicleRepository.listActiveForTenantUnscoped.mockImplementation(
+      onePageThenEmpty([
+        { id: 'vehicle-1', tenantId: 'tenant-1', customerId: 'customer-deleted', createdAt: new Date('2020-01-01T00:00:00.000Z') },
+      ]),
+    );
+    deps.serviceOrderRepository.lastDeliveredClosedAtUnscoped.mockResolvedValue(new Date('2025-12-26T00:00:00.000Z'));
+    deps.customerRepository.activeIdsAmongUnscoped.mockResolvedValue([]);
+
+    await deps.processor.process(job(NOW));
+
+    expect(deps.customerRepository.activeIdsAmongUnscoped).toHaveBeenCalledWith(['customer-deleted']);
+    expect(deps.maintenanceAlertRepository.upsertOpenAlert).not.toHaveBeenCalled();
   });
 
   it('stops paginating vehicles after MAX_CHUNKS even if every page comes back full', async () => {

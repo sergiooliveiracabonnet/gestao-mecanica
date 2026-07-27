@@ -92,6 +92,24 @@ export class CustomerRepository {
     });
   }
 
+  // `prisma.unscoped` de propósito: só chamado por
+  // MaintenanceAlertScanProcessor, que roda fora do AsyncLocalStorage de uma
+  // requisição. Usado pra filtrar veículos de cliente soft-deletado antes de
+  // gerar/manter um alerta (spec, Edge Case 5) — sem relação FK entre Vehicle
+  // e Customer (SCHEMA.md: sem REFERENCES), então o filtro é feito em
+  // aplicação via lote, mesmo padrão N+1-safe de `byIds`. Nunca usar isto num
+  // Controller/Manager.
+  async activeIdsAmongUnscoped(ids: string[]) {
+    if (ids.length === 0) {
+      return [];
+    }
+    const customers = await this.prisma.unscoped.customer.findMany({
+      where: { id: { in: ids }, deletedAt: null },
+      select: { id: true },
+    });
+    return customers.map((customer) => customer.id);
+  }
+
   // Escopado ao tenant automaticamente pela extensão — checagem de
   // unicidade do documento é sempre POR TENANT (ver schema.prisma).
   async byDocument(document: string) {

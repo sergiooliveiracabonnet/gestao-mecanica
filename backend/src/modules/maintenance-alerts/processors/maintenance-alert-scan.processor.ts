@@ -6,6 +6,7 @@ import { MAINTENANCE_ALERTS_QUEUE } from '../../../shared/queue/queue.module';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { VehicleRepository } from '../../vehicles/repositories/vehicle.repository';
 import { ServiceOrderRepository } from '../../service-orders/repositories/service-order.repository';
+import { CustomerRepository } from '../../customers/repositories/customer.repository';
 import { MaintenanceAlertRepository } from '../repositories/maintenance-alert.repository';
 import { monthsSince } from '../utils/months-since';
 
@@ -35,6 +36,7 @@ export class MaintenanceAlertScanProcessor extends WorkerHost {
     private readonly tenantRepository: TenantRepository,
     private readonly vehicleRepository: VehicleRepository,
     private readonly serviceOrderRepository: ServiceOrderRepository,
+    private readonly customerRepository: CustomerRepository,
     private readonly maintenanceAlertRepository: MaintenanceAlertRepository,
   ) {
     super();
@@ -69,7 +71,16 @@ export class MaintenanceAlertScanProcessor extends WorkerHost {
         break;
       }
 
-      for (const vehicle of vehicles) {
+      // Edge Case 5 da spec: veículo de cliente soft-deletado nunca gera nem
+      // mantém alerta. Sem relação FK entre Vehicle e Customer (SCHEMA.md),
+      // o filtro é feito em lote aqui (mesmo padrão N+1-safe já usado em
+      // CustomerRepository.byIds/VehicleRepository.byIds).
+      const activeCustomerIds = new Set(
+        await this.customerRepository.activeIdsAmongUnscoped(vehicles.map((vehicle) => vehicle.customerId)),
+      );
+      const vehiclesWithActiveCustomer = vehicles.filter((vehicle) => activeCustomerIds.has(vehicle.customerId));
+
+      for (const vehicle of vehiclesWithActiveCustomer) {
         try {
           await this.scanVehicle(vehicle, now);
         } catch (error) {

@@ -26,10 +26,11 @@ import { UserRepository } from '../../iam/repositories/user.repository';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderStatusHistoryRepository } from '../repositories/service-order-status-history.repository';
 import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './service-order-state-machine';
-// MaintenanceAlertRepository vem de um módulo @Global() (MaintenanceAlertsModule)
-// — injetado direto aqui sem ServiceOrdersModule precisar importar aquele
-// módulo, o que evitaria um ciclo (ver Gotchas do plano
-// motor-manutencao-preventiva.md).
+// MaintenanceAlertRepository vem de MaintenanceAlertsModule, que
+// ServiceOrdersModule importa via `forwardRef()` (o import é recíproco —
+// MaintenanceAlertsModule também importa ServiceOrdersModule via
+// `forwardRef()` — ver comentário em service-orders.module.ts e Gotchas do
+// plano motor-manutencao-preventiva.md).
 import { MaintenanceAlertRepository } from '../../maintenance-alerts/repositories/maintenance-alert.repository';
 
 @Injectable()
