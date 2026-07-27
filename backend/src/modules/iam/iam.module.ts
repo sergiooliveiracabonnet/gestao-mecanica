@@ -26,6 +26,8 @@ import { TokenService } from './services/token.service';
   ],
   // ServiceOrderManager (Feature 5) precisa validar que um technicianId
   // existe e pertence ao tenant — mesmo padrão de export do CustomerRepository.
-  exports: [UserRepository],
+  // TenantRepository: MaintenanceAlertsModule (Feature Motor de Manutenção
+  // Preventiva) precisa iterar todos os tenants no job diário de scan.
+  exports: [UserRepository, TenantRepository],
 })
 export class IamModule {}

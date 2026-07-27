@@ -40,4 +40,17 @@ export class TenantRepository {
       where: { document, deletedAt: null },
     });
   }
+
+  // Usado por MaintenanceAlertScanProcessor (Feature Motor de Manutenção
+  // Preventiva) pra iterar todos os tenants em chunks — Tenant nunca é
+  // tenant-scoped, então já é sempre `unscoped`, mesmo padrão dos outros
+  // métodos deste repositório.
+  async listAllUnscoped(offset: number, limit: number) {
+    return this.prisma.unscoped.tenant.findMany({
+      where: { deletedAt: null },
+      orderBy: { id: 'asc' },
+      skip: offset,
+      take: limit,
+    });
+  }
 }

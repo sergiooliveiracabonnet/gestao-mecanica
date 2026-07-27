@@ -77,6 +77,20 @@ export class ServiceOrderRepository {
     });
   }
 
+  // `prisma.unscoped` de propósito: só chamado por
+  // MaintenanceAlertScanProcessor (Feature Motor de Manutenção Preventiva),
+  // que roda fora do AsyncLocalStorage de uma requisição — mesmo raciocínio
+  // de VehicleRepository.listActiveForTenantUnscoped. Nunca usar isto num
+  // Controller/Manager.
+  async lastDeliveredClosedAtUnscoped(vehicleId: string): Promise<Date | null> {
+    const order = await this.prisma.unscoped.serviceOrder.findFirst({
+      where: { vehicleId, status: 'DELIVERED', deletedAt: null },
+      orderBy: { closedAt: 'desc' },
+      select: { closedAt: true },
+    });
+    return order?.closedAt ?? null;
+  }
+
   async listByTenant(
     offset: number,
     limit: number,

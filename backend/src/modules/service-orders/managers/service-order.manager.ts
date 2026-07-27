@@ -26,6 +26,12 @@ import { UserRepository } from '../../iam/repositories/user.repository';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderStatusHistoryRepository } from '../repositories/service-order-status-history.repository';
 import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './service-order-state-machine';
+// MaintenanceAlertRepository vem de MaintenanceAlertsModule, que
+// ServiceOrdersModule importa via `forwardRef()` (o import é recíproco —
+// MaintenanceAlertsModule também importa ServiceOrdersModule via
+// `forwardRef()` — ver comentário em service-orders.module.ts e Gotchas do
+// plano motor-manutencao-preventiva.md).
+import { MaintenanceAlertRepository } from '../../maintenance-alerts/repositories/maintenance-alert.repository';
 
 @Injectable()
 export class ServiceOrderManager {
@@ -37,6 +43,7 @@ export class ServiceOrderManager {
     private readonly userRepository: UserRepository,
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
+    private readonly maintenanceAlertRepository: MaintenanceAlertRepository,
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -182,6 +189,14 @@ export class ServiceOrderManager {
         },
         tx,
       );
+
+      // Edge Case 4 (spec Motor de Manutenção Preventiva): a referência de
+      // manutenção do veículo mudou — qualquer alerta OPEN anterior fica
+      // obsoleto. Resolvido na mesma transação pra garantir atomicidade com
+      // a mudança de status (TRANSACTIONS.md), não via fila assíncrona.
+      if (request.toStatus === 'DELIVERED') {
+        await this.maintenanceAlertRepository.resolveOpenByVehicleId(tx, existing.vehicleId, changedAt);
+      }
     });
 
     const updated = await this.serviceOrderRepository.byId(request.id);

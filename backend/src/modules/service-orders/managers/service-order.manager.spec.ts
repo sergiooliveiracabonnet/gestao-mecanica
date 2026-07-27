@@ -33,6 +33,7 @@ function buildManager() {
     transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(FAKE_TX)),
   };
   const auditLog = { record: jest.fn() };
+  const maintenanceAlertRepository = { resolveOpenByVehicleId: jest.fn() };
 
   const manager = new ServiceOrderManager(
     serviceOrderRepository as never,
@@ -42,9 +43,20 @@ function buildManager() {
     userRepository as never,
     prisma as never,
     auditLog as never,
+    maintenanceAlertRepository as never,
   );
 
-  return { manager, serviceOrderRepository, statusHistoryRepository, vehicleRepository, customerRepository, userRepository, prisma, auditLog };
+  return {
+    manager,
+    serviceOrderRepository,
+    statusHistoryRepository,
+    vehicleRepository,
+    customerRepository,
+    userRepository,
+    prisma,
+    auditLog,
+    maintenanceAlertRepository,
+  };
 }
 
 const baseCustomer = {
@@ -280,6 +292,32 @@ describe('ServiceOrderManager', () => {
       await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'DELIVERED' as never });
 
       expect(deps.serviceOrderRepository.transition).toHaveBeenCalledWith(FAKE_TX, 'so-1', 'COMPLETED', 'DELIVERED', expect.any(Date));
+    });
+
+    it('resolves an open maintenance alert for the vehicle when transitioning into DELIVERED (Edge Case 4)', async () => {
+      const deps = buildManager();
+      const existing = { ...baseServiceOrder, status: 'COMPLETED' };
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'DELIVERED' });
+      deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+
+      await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'DELIVERED' as never });
+
+      expect(deps.maintenanceAlertRepository.resolveOpenByVehicleId).toHaveBeenCalledWith(FAKE_TX, 'vehicle-1', expect.any(Date));
+    });
+
+    it('does not touch maintenance alerts for transitions other than DELIVERED', async () => {
+      const deps = buildManager();
+      const existing = { ...baseServiceOrder, status: 'OPEN' };
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'IN_PROGRESS' });
+      deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+
+      await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'IN_PROGRESS' as never });
+
+      expect(deps.maintenanceAlertRepository.resolveOpenByVehicleId).not.toHaveBeenCalled();
     });
 
     it('rejects with 409 when it loses the race against a concurrent transition', async () => {

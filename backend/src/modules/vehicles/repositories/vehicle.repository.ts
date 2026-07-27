@@ -94,6 +94,20 @@ export class VehicleRepository {
     });
   }
 
+  // `prisma.unscoped` de propósito: só chamado por
+  // MaintenanceAlertScanProcessor, que roda fora do AsyncLocalStorage de uma
+  // requisição (sem isso, `findMany` num model tenant-scoped sem contexto
+  // ativo lança exceção — ver tenant-isolation.middleware.ts). Nunca usar
+  // isto num Controller/Manager.
+  async listActiveForTenantUnscoped(tenantId: string, offset: number, limit: number) {
+    return this.prisma.unscoped.vehicle.findMany({
+      where: { tenantId, deletedAt: null },
+      orderBy: { id: 'asc' },
+      skip: offset,
+      take: limit,
+    });
+  }
+
   async listByTenant(offset: number, limit: number, search?: string, customerId?: string) {
     const where = {
       deletedAt: null,

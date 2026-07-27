@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Car, ClipboardList, LogOut, ShieldCheck, Users, Wrench } from 'lucide-react';
+import { Bell, Car, ClipboardList, LogOut, ShieldCheck, Users, Wrench } from 'lucide-react';
 import { useLogout } from '@/features/auth/hooks/use-auth';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/customers', label: 'Clientes', icon: Users },
   { href: '/vehicles', label: 'Veículos', icon: Car },
   { href: '/service-orders', label: 'Ordens de Serviço', icon: ClipboardList },
+  { href: '/maintenance-alerts', label: 'Alertas de Manutenção', icon: Bell },
   { href: '/users', label: 'Usuários', icon: ShieldCheck },
 ];
 
