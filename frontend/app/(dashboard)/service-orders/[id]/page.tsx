@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { DeleteServiceOrderDialog } from '@/features/service-orders/components/DeleteServiceOrderDialog';
 import { InspectionChecklist } from '@/features/service-orders/components/InspectionChecklist';
+import { ServiceOrderItemsSection } from '@/features/service-orders/components/ServiceOrderItemsSection';
 import { StatusBadge } from '@/features/service-orders/components/StatusBadge';
 import { StatusHistoryTimeline } from '@/features/service-orders/components/StatusHistoryTimeline';
 import { StatusTransitionButtons } from '@/features/service-orders/components/StatusTransitionButtons';
@@ -76,6 +77,8 @@ export default function ServiceOrderDetailPage() {
           <div className="rounded-card border border-border bg-surface p-4 sm:p-5"><p className="text-xs font-bold uppercase tracking-wide text-text-muted">Veículo</p><p className="mt-2 text-base font-bold text-text">{serviceOrder.vehicleBrand} {serviceOrder.vehicleModel}</p><p className="mt-1 font-mono text-xs font-semibold tracking-wide text-text-muted">{serviceOrder.vehiclePlate}</p><Button asChild variant="outline" size="sm" className="mt-4 w-full"><a href={`/vehicles?search=${encodeURIComponent(serviceOrder.vehiclePlate)}`}>Ver histórico do veículo</a></Button></div>
         </div>
       </div>
+
+      <ServiceOrderItemsSection serviceOrder={serviceOrder} />
 
       <div className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5"><p className="mb-3 text-lg font-bold tracking-tight text-text">Histórico da OS</p><StatusHistoryTimeline history={serviceOrder.statusHistory ?? []} /></div>
 

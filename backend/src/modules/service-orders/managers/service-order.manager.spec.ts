@@ -17,6 +17,14 @@ function buildManager() {
     insert: jest.fn(),
     byServiceOrderId: jest.fn(),
   };
+  const itemRepository = {
+    insert: jest.fn(),
+    byId: jest.fn(),
+    byServiceOrderId: jest.fn().mockResolvedValue([]),
+    update: jest.fn(),
+    softDelete: jest.fn(),
+    sumTotalsByServiceOrderIds: jest.fn().mockResolvedValue(new Map()),
+  };
   const vehicleRepository = {
     byId: jest.fn(),
     byIds: jest.fn(),
@@ -38,6 +46,7 @@ function buildManager() {
   const manager = new ServiceOrderManager(
     serviceOrderRepository as never,
     statusHistoryRepository as never,
+    itemRepository as never,
     vehicleRepository as never,
     customerRepository as never,
     userRepository as never,
@@ -50,6 +59,7 @@ function buildManager() {
     manager,
     serviceOrderRepository,
     statusHistoryRepository,
+    itemRepository,
     vehicleRepository,
     customerRepository,
     userRepository,
@@ -124,6 +134,24 @@ const baseServiceOrder = {
   updatedAt: null,
   deletedAt: null,
 };
+
+function decimal(value: number) {
+  return { toNumber: () => value } as never;
+}
+
+function buildItem(overrides: Partial<{ id: string; quantity: number; unitPriceCents: number; type: string; description: string }> = {}) {
+  return {
+    id: overrides.id ?? 'item-1',
+    serviceOrderId: 'so-1',
+    type: overrides.type ?? 'PART',
+    description: overrides.description ?? 'Filtro de óleo',
+    quantity: decimal(overrides.quantity ?? 2),
+    unitPriceCents: overrides.unitPriceCents ?? 5000,
+    createdAt: new Date('2026-07-17T10:00:00Z'),
+    updatedAt: null,
+    deletedAt: null,
+  };
+}
 
 describe('ServiceOrderManager', () => {
   describe('create', () => {
@@ -413,6 +441,168 @@ describe('ServiceOrderManager', () => {
       });
 
       expect(deps.serviceOrderRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'IN_PROGRESS', 'vehicle-1', 'technician-1', 'customer-1');
+    });
+
+    it('aggregates totalAmountCents per order in one batch call, without loading full items', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.listByTenant.mockResolvedValue({ items: [baseServiceOrder], total: 1 });
+      deps.vehicleRepository.byIds.mockResolvedValue([baseVehicle]);
+      deps.customerRepository.byIds.mockResolvedValue([baseCustomer]);
+      deps.userRepository.byIds.mockResolvedValue([]);
+      deps.itemRepository.sumTotalsByServiceOrderIds.mockResolvedValue(new Map([['so-1', 12500]]));
+
+      const result = await deps.manager.list({ offset: 0, limit: 20 });
+
+      expect(deps.itemRepository.sumTotalsByServiceOrderIds).toHaveBeenCalledWith(['so-1']);
+      expect(result.items[0].totalAmountCents).toBe(12500);
+      expect(result.items[0].items).toBeUndefined();
+    });
+  });
+
+  describe('getById with items', () => {
+    it('includes items and computes totalAmountCents from them', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.statusHistoryRepository.byServiceOrderId.mockResolvedValue([]);
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([
+        buildItem({ id: 'item-1', quantity: 2, unitPriceCents: 5000 }),
+        buildItem({ id: 'item-2', quantity: 1, unitPriceCents: 3000 }),
+      ]);
+
+      const result = await deps.manager.getById('so-1');
+
+      expect(result.serviceOrder.items).toHaveLength(2);
+      expect(result.serviceOrder.totalAmountCents).toBe(13000);
+    });
+
+    it('returns totalAmountCents 0 and an empty items array for an OS with no items', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.statusHistoryRepository.byServiceOrderId.mockResolvedValue([]);
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([]);
+
+      const result = await deps.manager.getById('so-1');
+
+      expect(result.serviceOrder.totalAmountCents).toBe(0);
+      expect(result.serviceOrder.items).toEqual([]);
+    });
+  });
+
+  describe('addItem', () => {
+    it('adds an item to an existing service order and returns its computed lineTotalCents', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.itemRepository.insert.mockResolvedValue(buildItem({ quantity: 2, unitPriceCents: 5000 }));
+
+      const result = await deps.manager.addItem({
+        serviceOrderId: 'so-1',
+        type: 'PART',
+        description: 'Filtro de óleo',
+        quantity: 2,
+        unitPriceCents: 5000,
+      });
+
+      expect(deps.itemRepository.insert).toHaveBeenCalledWith({
+        serviceOrderId: 'so-1',
+        type: 'PART',
+        description: 'Filtro de óleo',
+        quantity: 2,
+        unitPriceCents: 5000,
+      });
+      expect(result.item.lineTotalCents).toBe(10000);
+    });
+
+    it('rejects adding an item to a non-existent (or another tenant\'s) service order with 404', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(null);
+
+      await expect(
+        deps.manager.addItem({ serviceOrderId: 'missing', type: 'PART', description: 'X', quantity: 1, unitPriceCents: 100 }),
+      ).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND, code: 'SERVICE_ORDER_NOT_FOUND' });
+      expect(deps.itemRepository.insert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateItem', () => {
+    it('updates an item and returns the recalculated lineTotalCents', async () => {
+      const deps = buildManager();
+      deps.itemRepository.byId
+        .mockResolvedValueOnce(buildItem({ quantity: 2, unitPriceCents: 5000 }))
+        .mockResolvedValueOnce(buildItem({ quantity: 3, unitPriceCents: 5000 }));
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+
+      const result = await deps.manager.updateItem({ id: 'item-1', quantity: 3 });
+
+      expect(deps.itemRepository.update).toHaveBeenCalledWith('item-1', {
+        type: undefined,
+        description: undefined,
+        quantity: 3,
+        unitPriceCents: undefined,
+      });
+      expect(result.item.lineTotalCents).toBe(15000);
+    });
+
+    it('rejects updating a non-existent item with 404', async () => {
+      const deps = buildManager();
+      deps.itemRepository.byId.mockResolvedValue(null);
+
+      await expect(deps.manager.updateItem({ id: 'missing', quantity: 1 })).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: 'SERVICE_ORDER_ITEM_NOT_FOUND',
+      });
+    });
+
+    it('rejects updating an item whose owning service order is not visible to the current tenant with 404', async () => {
+      const deps = buildManager();
+      deps.itemRepository.byId.mockResolvedValue(buildItem());
+      deps.serviceOrderRepository.byId.mockResolvedValue(null);
+
+      await expect(deps.manager.updateItem({ id: 'item-1', quantity: 1 })).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: 'SERVICE_ORDER_ITEM_NOT_FOUND',
+      });
+      expect(deps.itemRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteItem', () => {
+    it('soft deletes an item and returns its pre-delete state', async () => {
+      const deps = buildManager();
+      const item = buildItem();
+      deps.itemRepository.byId.mockResolvedValue(item);
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.itemRepository.softDelete.mockResolvedValue({ count: 1 });
+
+      const result = await deps.manager.deleteItem('item-1');
+
+      expect(deps.itemRepository.softDelete).toHaveBeenCalledWith('item-1');
+      expect(result.item.id).toBe('item-1');
+    });
+
+    it('rejects deleting a non-existent item with 404', async () => {
+      const deps = buildManager();
+      deps.itemRepository.byId.mockResolvedValue(null);
+
+      await expect(deps.manager.deleteItem('missing')).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: 'SERVICE_ORDER_ITEM_NOT_FOUND',
+      });
+    });
+
+    it('rejects deleting an item whose owning service order belongs to another tenant with 404', async () => {
+      const deps = buildManager();
+      deps.itemRepository.byId.mockResolvedValue(buildItem());
+      deps.serviceOrderRepository.byId.mockResolvedValue(null);
+
+      await expect(deps.manager.deleteItem('item-1')).rejects.toMatchObject({
+        status: HttpStatus.NOT_FOUND,
+        code: 'SERVICE_ORDER_ITEM_NOT_FOUND',
+      });
+      expect(deps.itemRepository.softDelete).not.toHaveBeenCalled();
     });
   });
 });

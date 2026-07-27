@@ -18,6 +18,7 @@ const serviceOrder: ServiceOrderListItemResponse = {
   technicianName: undefined,
   openedAt: '2026-01-01T00:00:00Z',
   createdAt: '2026-01-01T00:00:00Z',
+  totalAmountCents: 15000,
 };
 
 function noop() {}
@@ -50,6 +51,7 @@ describe('ServiceOrdersTable', () => {
     expect(screen.getByText('João da Silva')).toBeInTheDocument();
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.getByText('Aberta')).toBeInTheDocument();
+    expect(screen.getByText('R$ 150,00')).toBeInTheDocument();
   });
 
   it('links each row to its detail page', () => {

@@ -1,16 +1,20 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type {
+  CreateServiceOrderItemRequest,
   CreateServiceOrderRequest,
   PaginationData,
+  ServiceOrderItemResponse,
   ServiceOrderListRequest,
   ServiceOrderResponse,
   ServiceOrderStatusHistoryItemResponse,
   TransitionServiceOrderRequest,
+  UpdateServiceOrderItemRequest,
   UpdateServiceOrderRequest,
 } from '@oficina/contracts';
 import type {
   Customer as CustomerEntity,
   ServiceOrder as ServiceOrderEntity,
+  ServiceOrderItem as ServiceOrderItemEntity,
   ServiceOrderStatusHistory as ServiceOrderStatusHistoryEntity,
   User as UserEntity,
   Vehicle as VehicleEntity,
@@ -25,6 +29,7 @@ import { VehicleRepository } from '../../vehicles/repositories/vehicle.repositor
 import { UserRepository } from '../../iam/repositories/user.repository';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderStatusHistoryRepository } from '../repositories/service-order-status-history.repository';
+import { ServiceOrderItemRepository } from '../repositories/service-order-item.repository';
 import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './service-order-state-machine';
 // MaintenanceAlertRepository vem de MaintenanceAlertsModule, que
 // ServiceOrdersModule importa via `forwardRef()` (o import é recíproco —
@@ -38,6 +43,7 @@ export class ServiceOrderManager {
   constructor(
     private readonly serviceOrderRepository: ServiceOrderRepository,
     private readonly statusHistoryRepository: ServiceOrderStatusHistoryRepository,
+    private readonly itemRepository: ServiceOrderItemRepository,
     private readonly vehicleRepository: VehicleRepository,
     private readonly customerRepository: CustomerRepository,
     private readonly userRepository: UserRepository,
@@ -100,7 +106,10 @@ export class ServiceOrderManager {
       metadata: { vehicleId: vehicle.id, status: serviceOrder.status },
     });
 
-    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician) };
+    // OS recém-criada nunca tem itens ainda — evita uma query desnecessária
+    // (diferente de update/transition/delete, que operam numa OS que já pode
+    // ter itens lançados).
+    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, { items: [], totalAmountCentsOverride: 0 }) };
   }
 
   async update(actingUser: AuthenticatedUser, request: UpdateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -135,6 +144,7 @@ export class ServiceOrderManager {
       updated.technicianId ? this.userRepository.byId(updated.technicianId) : Promise.resolve(null),
     ]);
     const customer = await this.customerRepository.byId(updated.customerId);
+    const totalAmountCents = await this.computeTotalAmountCents(updated.id);
 
     await this.auditLog.record({
       tenantId: actingUser.tenantId,
@@ -145,7 +155,7 @@ export class ServiceOrderManager {
       metadata: {},
     });
 
-    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician) };
+    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
   }
 
   async transition(actingUser: AuthenticatedUser, request: TransitionServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -209,6 +219,7 @@ export class ServiceOrderManager {
       updated.technicianId ? this.userRepository.byId(updated.technicianId) : Promise.resolve(null),
     ]);
     const customer = await this.customerRepository.byId(updated.customerId);
+    const totalAmountCents = await this.computeTotalAmountCents(updated.id);
 
     await this.auditLog.record({
       tenantId: actingUser.tenantId,
@@ -219,7 +230,7 @@ export class ServiceOrderManager {
       metadata: { fromStatus, toStatus: request.toStatus },
     });
 
-    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician) };
+    return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
   }
 
   async delete(actingUser: AuthenticatedUser, id: string): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -238,6 +249,7 @@ export class ServiceOrderManager {
       existing.technicianId ? this.userRepository.byId(existing.technicianId) : Promise.resolve(null),
     ]);
     const customer = await this.customerRepository.byId(existing.customerId);
+    const totalAmountCents = await this.computeTotalAmountCents(existing.id);
 
     await this.auditLog.record({
       tenantId: actingUser.tenantId,
@@ -248,7 +260,7 @@ export class ServiceOrderManager {
       metadata: {},
     });
 
-    return { serviceOrder: this.toResponse(existing, vehicle, customer, technician) };
+    return { serviceOrder: this.toResponse(existing, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
   }
 
   async getById(id: string): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -257,14 +269,15 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
     }
 
-    const [vehicle, technician, history] = await Promise.all([
+    const [vehicle, technician, history, items] = await Promise.all([
       this.vehicleRepository.byId(serviceOrder.vehicleId),
       serviceOrder.technicianId ? this.userRepository.byId(serviceOrder.technicianId) : Promise.resolve(null),
       this.statusHistoryRepository.byServiceOrderId(id),
+      this.itemRepository.byServiceOrderId(id),
     ]);
     const customer = await this.customerRepository.byId(serviceOrder.customerId);
 
-    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, history) };
+    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, { history, items }) };
   }
 
   async list(request: ServiceOrderListRequest): Promise<PaginationData<ServiceOrderResponse>> {
@@ -281,10 +294,11 @@ export class ServiceOrderManager {
     const customerIds = [...new Set(items.map((item) => item.customerId))];
     const technicianIds = [...new Set(items.map((item) => item.technicianId).filter((id): id is string => !!id))];
 
-    const [vehicles, customers, technicians] = await Promise.all([
+    const [vehicles, customers, technicians, totalsByOrderId] = await Promise.all([
       this.vehicleRepository.byIds(vehicleIds),
       this.customerRepository.byIds(customerIds),
       this.userRepository.byIds(technicianIds),
+      this.itemRepository.sumTotalsByServiceOrderIds(items.map((serviceOrder) => serviceOrder.id)),
     ]);
     const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
     const customerById = new Map(customers.map((customer) => [customer.id, customer]));
@@ -297,6 +311,7 @@ export class ServiceOrderManager {
           vehicleById.get(serviceOrder.vehicleId) ?? null,
           customerById.get(serviceOrder.customerId) ?? null,
           serviceOrder.technicianId ? (technicianById.get(serviceOrder.technicianId) ?? null) : null,
+          { totalAmountCentsOverride: totalsByOrderId.get(serviceOrder.id) ?? 0 },
         ),
       ),
       total,
@@ -306,13 +321,111 @@ export class ServiceOrderManager {
     };
   }
 
+  async addItem(request: CreateServiceOrderItemRequest): Promise<{ item: ServiceOrderItemResponse }> {
+    const serviceOrder = await this.serviceOrderRepository.byId(request.serviceOrderId);
+    if (!serviceOrder) {
+      throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    }
+
+    const created = await this.itemRepository.insert({
+      serviceOrderId: request.serviceOrderId,
+      type: request.type,
+      description: request.description,
+      quantity: request.quantity,
+      unitPriceCents: request.unitPriceCents,
+    });
+
+    return { item: this.toItemResponse(created) };
+  }
+
+  async updateItem(request: UpdateServiceOrderItemRequest): Promise<{ item: ServiceOrderItemResponse }> {
+    const existing = await this.itemRepository.byId(request.id);
+    if (!existing) {
+      throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+    }
+
+    // Item não tem tenant_id próprio (ver schema.prisma) — o isolamento é
+    // garantido checando se a OS dona é visível pro tenant atual, via
+    // ServiceOrderRepository.byId() (tenant-scoped pela extensão Prisma).
+    const owningOrder = await this.serviceOrderRepository.byId(existing.serviceOrderId);
+    if (!owningOrder) {
+      throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+    }
+
+    await this.itemRepository.update(request.id, {
+      type: request.type,
+      description: request.description,
+      quantity: request.quantity,
+      unitPriceCents: request.unitPriceCents,
+    });
+
+    const updated = await this.itemRepository.byId(request.id);
+    if (!updated) {
+      throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+    }
+
+    return { item: this.toItemResponse(updated) };
+  }
+
+  async deleteItem(id: string): Promise<{ item: ServiceOrderItemResponse }> {
+    const existing = await this.itemRepository.byId(id);
+    if (!existing) {
+      throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+    }
+
+    const owningOrder = await this.serviceOrderRepository.byId(existing.serviceOrderId);
+    if (!owningOrder) {
+      throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+    }
+
+    const { count } = await this.itemRepository.softDelete(id);
+    if (count === 0) {
+      throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+    }
+
+    return { item: this.toItemResponse(existing) };
+  }
+
+  private async computeTotalAmountCents(serviceOrderId: string): Promise<number> {
+    const items = await this.itemRepository.byServiceOrderId(serviceOrderId);
+    return items.reduce((sum, item) => sum + this.toItemResponse(item).lineTotalCents, 0);
+  }
+
+  private toItemResponse(item: ServiceOrderItemEntity): ServiceOrderItemResponse {
+    const quantity = item.quantity.toNumber();
+    return {
+      id: item.id,
+      serviceOrderId: item.serviceOrderId,
+      type: item.type as ServiceOrderItemResponse['type'],
+      description: item.description,
+      quantity,
+      unitPriceCents: item.unitPriceCents,
+      lineTotalCents: Math.round(quantity * item.unitPriceCents),
+      createdAt: item.createdAt.toISOString(),
+    };
+  }
+
   private toResponse(
     serviceOrder: ServiceOrderEntity,
     vehicle: VehicleEntity | null,
     customer: CustomerEntity | null,
     technician: UserEntity | null,
-    history?: ServiceOrderStatusHistoryEntity[],
+    options?: {
+      history?: ServiceOrderStatusHistoryEntity[];
+      // `items` só populado por getById (mesmo padrão de `history`) — quando
+      // presente, o total é somado a partir dele; senão usa
+      // `totalAmountCentsOverride`, já calculado em lote/individualmente
+      // pelo chamador (list/create/update/transition/delete). Nunca um
+      // campo denormalizado (ver plano itens-e-preco-da-os.md).
+      items?: ServiceOrderItemEntity[];
+      totalAmountCentsOverride?: number;
+    },
   ): ServiceOrderResponse {
+    const itemResponses = options?.items?.map((item) => this.toItemResponse(item));
+    const totalAmountCents = itemResponses
+      ? itemResponses.reduce((sum, item) => sum + item.lineTotalCents, 0)
+      : (options?.totalAmountCentsOverride ?? 0);
+
     return {
       id: serviceOrder.id,
       tenantId: serviceOrder.tenantId,
@@ -330,7 +443,9 @@ export class ServiceOrderManager {
       openedAt: serviceOrder.openedAt.toISOString(),
       closedAt: serviceOrder.closedAt?.toISOString(),
       createdAt: serviceOrder.createdAt.toISOString(),
-      statusHistory: history?.map((item) => this.toHistoryItem(item)),
+      statusHistory: options?.history?.map((item) => this.toHistoryItem(item)),
+      totalAmountCents,
+      items: itemResponses,
     };
   }
 
