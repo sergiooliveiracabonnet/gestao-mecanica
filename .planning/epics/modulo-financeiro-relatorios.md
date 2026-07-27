@@ -34,7 +34,7 @@ epic `nucleo-operacional-mvp` já citava como futuro.
 
 | # | Feature | Status | Spec | Plan | Depends On |
 |---|---------|--------|------|------|------------|
-| 8 | Itens e Preço da OS | planned | [spec](../specs/itens-e-preco-da-os.md) | [plan](../plans/itens-e-preco-da-os.md) | #5 (Ordem de Serviço) |
+| 8 | Itens e Preço da OS | done | [spec](../specs/itens-e-preco-da-os.md) | [plan](../plans/itens-e-preco-da-os.md) | #5 (Ordem de Serviço) |
 | 9 | Pagamentos da OS | todo | — | — | #8 |
 | 10 | Despesas e Contas a Pagar | todo | — | — | — |
 | 11 | Categorização de OS | todo | — | — | #5 (Ordem de Serviço) |
