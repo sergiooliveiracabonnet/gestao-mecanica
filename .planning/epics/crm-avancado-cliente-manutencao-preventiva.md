@@ -42,7 +42,7 @@ pra WhatsApp/e-mail ainda (decisão explícita: fica pra depois).
 | # | Feature | Status | Spec | Plan | Depends On |
 |---|---------|--------|------|------|------------|
 | 6 | Cadastro de Cliente Expandido (abas + campos + histórico) | done | [spec](../specs/cadastro-cliente-expandido.md) | [plan](../plans/cadastro-cliente-expandido.md) | #3 (Clientes), #5 (Ordem de Serviço) |
-| 7 | Motor de Manutenção Preventiva (alertas internos, 6 meses) | plan | [spec](../specs/motor-manutencao-preventiva.md) | [plan](../plans/motor-manutencao-preventiva.md) | #4 (Veículos), #5 (Ordem de Serviço) |
+| 7 | Motor de Manutenção Preventiva (alertas internos, 6 meses) | done | [spec](../specs/motor-manutencao-preventiva.md) | [plan](../plans/motor-manutencao-preventiva.md) | #4 (Veículos), #5 (Ordem de Serviço) |
 
 Numeração contínua a partir do epic `nucleo-operacional-mvp` (Features
 1-5), já que reaproveita a base de dados e módulos daquele epic
