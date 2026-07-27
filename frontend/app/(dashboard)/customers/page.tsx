@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 import type { CustomerListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { useAuthStore } from '@/stores/auth-store';
 const PAGE_SIZE = 20;
 
 export default function CustomersPage() {
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   // MECHANIC vê a tela (precisa consultar o dono do veículo numa OS), mas
   // não gerencia clientes — RolesGuard do backend é a fonte de verdade,
@@ -29,8 +31,7 @@ export default function CustomersPage() {
   const { data, isLoading, isError, refetch } = useCustomersList({ offset, limit: PAGE_SIZE, search: search || undefined });
 
   function openCreateModal() {
-    setEditingCustomer(undefined);
-    setFormModalOpen(true);
+    router.push('/service-orders/new');
   }
 
   function openEditModal(customer: CustomerListItemResponse) {

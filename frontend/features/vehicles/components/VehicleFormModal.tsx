@@ -60,9 +60,12 @@ interface VehicleFormModalProps {
   onOpenChange: (open: boolean) => void;
   /** undefined = modo criação, definido = modo edição (cliente vira somente leitura). */
   vehicle?: VehicleListItemResponse;
+  initialCustomer?: { id: string; name: string };
+  onCreated?: (vehicle: VehicleListItemResponse) => void;
+  presentation?: 'modal' | 'page';
 }
 
-export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormModalProps) {
+export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer, onCreated, presentation = 'modal' }: VehicleFormModalProps) {
   const isEditing = Boolean(vehicle);
   const create = useCreateVehicle();
   const update = useUpdateVehicle();
@@ -94,12 +97,13 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
             chassis: vehicle.chassis ?? '',
             mileage: vehicle.mileage?.toString() ?? '',
           }
-        : EMPTY_VALUES,
+        : { ...EMPTY_VALUES, customerId: initialCustomer?.id ?? '' },
     );
-  }, [open, vehicle, form]);
+  }, [open, vehicle, initialCustomer, form]);
 
   function onSubmit(values: VehicleFormValues) {
-    const onSuccess = () => {
+    const onSuccess = (result?: { vehicle: VehicleListItemResponse }) => {
+      if (!isEditing && result?.vehicle) onCreated?.(result.vehicle);
       toast.success(isEditing ? 'Veículo atualizado com sucesso!' : 'Veículo cadastrado com sucesso!');
       onOpenChange(false);
     };
@@ -133,8 +137,8 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto">
+    <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
+      <DialogContent data-page={presentation === 'page' ? true : undefined} className={`max-h-[92vh] overflow-y-auto ${presentation === 'page' ? '' : 'sm:max-w-3xl lg:max-w-4xl'}`}>
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar veículo' : 'Novo veículo'}</DialogTitle>
           <DialogDescription>
@@ -142,15 +146,18 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            {isEditing ? (
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
+            <div className="rounded-button border border-primary/15 bg-primary-subtle px-3 py-2.5 text-xs leading-5 text-primary-strong">
+              Comece pelo proprietário e pela identificação do veículo. Os demais dados ajudam sua equipe no diagnóstico e na entrega.
+            </div>
+            {isEditing || initialCustomer ? (
               // Sem FormField/FormLabel aqui de propósito: não há campo do
               // react-hook-form associado (customerId não é editável) — os
               // primitivos do Form exigem contexto de um FormField
               // (useFormField lança fora dele).
               <div className="space-y-2">
                 <p className="text-sm font-medium text-text">Cliente</p>
-                <p className="rounded-button border border-input bg-muted px-3 py-2 text-sm text-text-muted">{vehicle?.customerName}</p>
+                <p className="rounded-button border border-input bg-muted px-3 py-2 text-sm text-text-muted">{vehicle?.customerName ?? initialCustomer?.name}</p>
               </div>
             ) : (
               <FormField
@@ -179,7 +186,9 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
               />
             )}
             <FipeBrandModelFields form={form} isEditing={isEditing} />
-            <div className="grid grid-cols-2 gap-4">
+            <fieldset className="flex flex-col gap-4 rounded-card border border-border p-4">
+              <legend className="px-1 text-sm font-semibold text-text">Identificação do veículo</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="plate"
@@ -207,7 +216,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
                 )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="engine"
@@ -235,7 +244,10 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
                 )}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            </fieldset>
+            <fieldset className="flex flex-col gap-4 rounded-card border border-border p-4">
+              <legend className="px-1 text-sm font-semibold text-text">Dados complementares</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="chassis"
@@ -263,8 +275,12 @@ export function VehicleFormModal({ open, onOpenChange, vehicle }: VehicleFormMod
                 )}
               />
             </div>
-            <DialogFooter>
-              <Button type="submit" disabled={isPending}>
+            </fieldset>
+            <DialogFooter className="gap-2 border-t border-border pt-4 sm:gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending} className="sm:min-w-40">
                 {isPending ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar veículo'}
               </Button>
             </DialogFooter>

@@ -6,16 +6,39 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: 'var(--color-primary)',
-        bg: 'var(--color-bg)',
-        surface: 'var(--color-surface)',
+        primary: {
+          DEFAULT: 'var(--primary)',
+          hover: 'var(--primary-hover)',
+          active: 'var(--primary-active)',
+          foreground: 'var(--primary-foreground)',
+        },
+        bg: 'var(--background)',
+        surface: 'var(--surface)',
         border: 'var(--color-border)',
+        'border-strong': 'var(--border-strong)',
         text: 'var(--color-text)',
         'text-muted': 'var(--color-text-muted)',
-        success: 'var(--color-success)',
-        danger: 'var(--color-danger)',
-        warning: 'var(--color-warning)',
-        info: 'var(--color-info)',
+        selection: 'var(--selection)',
+        success: {
+          DEFAULT: 'var(--success)',
+          subtle: 'var(--success-subtle)',
+          strong: 'var(--success-strong)',
+        },
+        danger: {
+          DEFAULT: 'var(--danger)',
+          subtle: 'var(--danger-subtle)',
+          strong: 'var(--danger-strong)',
+        },
+        warning: {
+          DEFAULT: 'var(--warning)',
+          subtle: 'var(--warning-subtle)',
+          strong: 'var(--warning-strong)',
+        },
+        info: {
+          DEFAULT: 'var(--info)',
+          subtle: 'var(--info-subtle)',
+          strong: 'var(--info-strong)',
+        },
         // Contrato shadcn — ver comentário em globals.css. Sem estes, as
         // classes bg-card/bg-muted/bg-accent/border-input/ring-ring etc.
         // usadas pelos primitivos (Button, Select, Dialog, Table...) não
@@ -56,9 +79,17 @@ const config: Config = {
         DEFAULT: 'var(--border)',
       },
       borderRadius: {
-        card: '12px',
-        button: '8px',
+        card: 'var(--radius-card)',
+        button: 'var(--radius-button)',
+        dialog: 'var(--radius-dialog)',
         pill: '999px',
+      },
+      transitionDuration: {
+        fast: 'var(--duration-fast)',
+        normal: 'var(--duration-normal)',
+      },
+      boxShadow: {
+        'inner-subtle': 'var(--shadow-inner-subtle)',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'sans-serif'],

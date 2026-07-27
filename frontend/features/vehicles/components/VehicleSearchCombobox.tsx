@@ -12,6 +12,8 @@ const RESULTS_LIMIT = 20;
 interface VehicleSearchComboboxProps extends Omit<ComponentPropsWithoutRef<typeof Input>, 'value' | 'onChange' | 'type' | 'role'> {
   value: string;
   onChange: (vehicleId: string) => void;
+  customerId?: string;
+  initialLabel?: string;
 }
 
 function vehicleLabel(vehicle: VehicleListItemResponse): string {
@@ -23,7 +25,7 @@ function vehicleLabel(vehicle: VehicleListItemResponse): string {
 // ...rest/ref pra funcionar dentro de <FormControl> (id/aria-describedby/
 // aria-invalid vêm do Slot do shadcn, mesmo padrão de FipeBrandModelFields).
 export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchComboboxProps>(function VehicleSearchCombobox(
-  { value, onChange, placeholder, ...rest },
+  { value, onChange, placeholder, customerId, initialLabel, ...rest },
   ref,
 ) {
   const listboxId = useId();
@@ -40,8 +42,11 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
     if (value === '') {
       setQuery('');
       setConfirmedLabel('');
+    } else if (initialLabel) {
+      setQuery(initialLabel);
+      setConfirmedLabel(initialLabel);
     }
-  }, [value]);
+  }, [value, initialLabel]);
 
   useEffect(() => {
     const timeout = setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
@@ -56,7 +61,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
   // useVehiclesList sem essa flag e mantém a busca original (ver
   // VehicleListRequest.matchOwner).
   const { data, isFetching } = useVehiclesList(
-    { offset: 0, limit: RESULTS_LIMIT, search: debouncedQuery, matchOwner: true },
+    { offset: 0, limit: RESULTS_LIMIT, search: debouncedQuery, customerId, matchOwner: true },
     { enabled: canSearch && isOpen },
   );
 

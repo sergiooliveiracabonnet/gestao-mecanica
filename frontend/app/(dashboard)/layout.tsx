@@ -11,12 +11,12 @@ export const dynamic = 'force-dynamic';
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <div className="flex h-screen overflow-hidden bg-bg">
+      <div className="min-h-screen bg-bg">
         <Sidebar />
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="min-h-screen min-w-0 transition-[padding] duration-normal md:pl-[var(--sidebar-width)]">
           <Topbar />
-          <main className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="mx-auto max-w-5xl">{children}</div>
+          <main className="flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:py-6 md:pb-6">
+            <div className="mx-auto w-full max-w-[1440px]">{children}</div>
           </main>
         </div>
       </div>

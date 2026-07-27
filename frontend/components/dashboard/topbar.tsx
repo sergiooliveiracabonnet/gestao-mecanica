@@ -1,9 +1,13 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import Link from 'next/link';
+import { Bell, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const PAGE_META: Record<string, { title: string; description: string }> = {
+  '/dashboard': { title: 'Visão da oficina', description: 'O que precisa da sua atenção hoje.' },
   '/customers': { title: 'Clientes', description: 'Gerencie os clientes da sua oficina.' },
   '/vehicles': { title: 'Veículos', description: 'Gerencie os veículos cadastrados da sua oficina.' },
   '/service-orders': { title: 'Ordens de Serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.' },
@@ -33,12 +37,16 @@ export function Topbar() {
   const meta = resolveMeta(pathname);
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-bg px-6">
-      <div>
-        <h1 className="text-lg font-semibold leading-tight text-text">{meta.title}</h1>
-        {meta.description && <p className="text-sm text-text-muted">{meta.description}</p>}
+    <header className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-bg px-4 sm:px-6">
+      <div className="min-w-0">
+        <h1 className="truncate text-lg font-bold leading-tight tracking-tight text-text">{meta.title}</h1>
+        {meta.description && <p className="hidden truncate text-sm text-text-muted sm:block">{meta.description}</p>}
       </div>
-      <ThemeToggle />
+      <div className="flex shrink-0 items-center gap-1">
+        <Button asChild variant="ghost" size="icon" className="text-text-muted hover:text-text"><Link href="/service-orders" aria-label="Buscar ordens de serviço"><Search className="size-[18px]" aria-hidden="true" /></Link></Button>
+        <Button asChild variant="ghost" size="icon" className="relative text-text-muted hover:text-text"><Link href="/maintenance-alerts" aria-label="Ver alertas de manutenção"><Bell className="size-[18px]" aria-hidden="true" /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-warning" aria-hidden="true" /></Link></Button>
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

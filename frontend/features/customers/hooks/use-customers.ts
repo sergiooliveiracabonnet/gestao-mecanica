@@ -6,11 +6,12 @@ import { customersApi } from '../api/customers-api';
 
 const CUSTOMERS_LIST_KEY = 'customers-list';
 
-export function useCustomersList(request: CustomerListRequest) {
+export function useCustomersList(request: CustomerListRequest, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [CUSTOMERS_LIST_KEY, request],
     queryFn: () => customersApi.list(request),
     placeholderData: (previousData) => previousData,
+    enabled: options?.enabled ?? true,
   });
 }
 

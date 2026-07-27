@@ -2,114 +2,207 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
 :root {
-  /* Laranja de sinalização industrial no lugar do azul SaaS genérico —
-     decisão do debate ui-ux-pro-max x frontend-design (ver
-     .planning/design-config.md se precisar do histórico). --color-info
-     herda o azul antigo: continua existindo, só deixou de ser a cor de
-     marca pra virar semântica (ver StatusBadge, estado OPEN). */
-  --color-primary: #c2410c;
-  --color-bg: #ffffff;
-  --color-surface: #f8fafc;
-  --color-border: #e2e8f0;
-  --color-text: #0f172a;
-  --color-text-muted: #64748b;
-  --color-success: #16a34a;
-  --color-danger: #dc2626;
-  --color-warning: #d97706;
-  --color-info: #2563eb;
+  --sidebar-width: 16rem;
+    /* Primitivos: únicos tokens que contêm valores de cor brutos. */
+    --orange-50: #fff7ed;
+    --orange-100: #ffedd5;
+    --orange-200: #fed7aa;
+    --orange-300: #fdba74;
+    --orange-400: #fb923c;
+    --orange-500: #f97316;
+    --orange-600: #ea580c;
+    --orange-700: #c2410c;
+    --orange-800: #9a3412;
+    --orange-900: #7c2d12;
+    --orange-950: #431407;
 
-  /* Alias contract consumida pelos primitivos shadcn (Button, Card, Table,
-     Select, Dialog...) — sem isso, metade das variantes (outline, ghost,
-     secondary, hover, focus ring, popover) não tem cor nenhuma definida e
-     o Tailwind simplesmente não gera CSS pra elas. Deriva dos tokens acima
-     em vez de introduzir uma paleta paralela. */
-  --background: var(--color-bg);
-  --foreground: var(--color-text);
-  --card: #ffffff;
-  --card-foreground: var(--color-text);
-  --popover: #ffffff;
-  --popover-foreground: var(--color-text);
-  --primary: var(--color-primary);
-  --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: var(--color-text);
-  --muted: #f1f5f9;
-  --muted-foreground: var(--color-text-muted);
-  --accent: #fff7ed;
-  --accent-foreground: #9a3412;
-  --destructive: var(--color-danger);
-  --destructive-foreground: #ffffff;
-  --border: var(--color-border);
-  --input: var(--color-border);
-  --ring: var(--color-primary);
-}
+    --slate-0: #ffffff;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --slate-900: #0f172a;
+    --slate-950: #0b0f17;
 
-.dark {
-  --color-primary: #fb923c;
-  --color-bg: #0b0f17;
-  --color-surface: #111827;
-  --color-border: #1f2937;
-  --color-text: #f1f5f9;
-  --color-text-muted: #94a3b8;
-  --color-success: #22c55e;
-  --color-danger: #ef4444;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
+    --green-50: #f0fdf4;
+    --green-400: #4ade80;
+    --green-600: #16a34a;
+    --green-800: #166534;
+    --amber-50: #fffbeb;
+    --amber-400: #fbbf24;
+    --amber-600: #d97706;
+    --amber-800: #92400e;
+    --red-50: #fef2f2;
+    --red-400: #f87171;
+    --red-600: #dc2626;
+    --red-800: #991b1b;
+    --blue-50: #eff6ff;
+    --blue-400: #60a5fa;
+    --blue-600: #2563eb;
+    --blue-800: #1e40af;
 
-  --background: var(--color-bg);
-  --foreground: var(--color-text);
-  --card: #111827;
-  --card-foreground: var(--color-text);
-  --popover: #131a26;
-  --popover-foreground: var(--color-text);
-  --primary: var(--color-primary);
-  --primary-foreground: #1c0a02;
-  --secondary: #1e293b;
-  --secondary-foreground: var(--color-text);
-  --muted: #1f2937;
-  --muted-foreground: var(--color-text-muted);
-  --accent: #2a1a0f;
-  --accent-foreground: #fdba74;
-  --destructive: var(--color-danger);
-  --destructive-foreground: #ffffff;
-  --border: var(--color-border);
-  --input: var(--color-border);
-  --ring: var(--color-primary);
-}
+    /* Semânticos: componentes e telas devem consumir esta camada. */
+    --background: var(--slate-0);
+    --foreground: var(--slate-900);
+    --surface: var(--slate-50);
+    --card: var(--slate-0);
+    --card-foreground: var(--foreground);
+    --popover: var(--slate-0);
+    --popover-foreground: var(--foreground);
+    --muted: var(--slate-100);
+    --muted-foreground: var(--slate-500);
+    --subtle-foreground: var(--slate-400);
+    --border: var(--slate-200);
+    --border-strong: var(--slate-300);
+    --input: var(--slate-300);
 
-* {
-  border-color: var(--border);
-}
+    --primary: var(--orange-700);
+    --primary-hover: var(--orange-800);
+    --primary-active: var(--orange-900);
+    --primary-foreground: var(--slate-0);
+    --selection: var(--orange-50);
+    --accent: var(--selection);
+    --accent-foreground: var(--orange-800);
+    --ring: var(--orange-700);
 
-body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  /* Bug pré-existente: nada aplicava a fonte carregada por next/font em
-     lugar nenhum — --font-sans/--font-inter resolvia certo, mas o
-     navegador caía no serif padrão do user-agent por falta de uma regra
-     font-family real. Afetava o app inteiro, não só esta troca de fonte. */
-  font-family: var(--font-sans), sans-serif;
-  font-feature-settings: 'cv11', 'ss01';
-  -webkit-font-smoothing: antialiased;
-}
+    --secondary: var(--slate-100);
+    --secondary-foreground: var(--slate-900);
+    --destructive: var(--red-600);
+    --destructive-foreground: var(--slate-0);
 
-/* Scrollbar discreta — o padrão do SO destoa do resto da interface. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
-}
+    --success: var(--green-600);
+    --success-subtle: var(--green-50);
+    --success-strong: var(--green-800);
+    --warning: var(--amber-600);
+    --warning-subtle: var(--amber-50);
+    --warning-strong: var(--amber-800);
+    --danger: var(--red-600);
+    --danger-subtle: var(--red-50);
+    --danger-strong: var(--red-800);
+    --info: var(--blue-600);
+    --info-subtle: var(--blue-50);
+    --info-strong: var(--blue-800);
 
-*::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+    /* Aliases legados: manter durante a migração das telas atuais. */
+    --color-primary: var(--primary);
+    --color-bg: var(--background);
+    --color-surface: var(--surface);
+    --color-border: var(--border);
+    --color-text: var(--foreground);
+    --color-text-muted: var(--muted-foreground);
+    --color-success: var(--success);
+    --color-danger: var(--danger);
+    --color-warning: var(--warning);
+    --color-info: var(--info);
 
-*::-webkit-scrollbar-thumb {
-  background-color: var(--color-border);
-  border-radius: 999px;
-}
+    /* Forma, movimento e elevação. */
+    --radius-button: 0.5rem;
+    --radius-card: 0.75rem;
+    --radius-dialog: 1rem;
+    --duration-fast: 120ms;
+    --duration-normal: 220ms;
+    --shadow-inner-subtle: inset 0 1px 2px rgb(15 23 42 / 0.04);
+  }
 
-*::-webkit-scrollbar-track {
-  background: transparent;
+  .dark {
+    --background: var(--slate-950);
+    --foreground: var(--slate-100);
+    --surface: #111827;
+    --card: #111827;
+    --card-foreground: var(--foreground);
+    --popover: #131a26;
+    --popover-foreground: var(--foreground);
+    --muted: #1f2937;
+    --muted-foreground: var(--slate-400);
+    --subtle-foreground: var(--slate-500);
+    --border: #1f2937;
+    --border-strong: var(--slate-700);
+    --input: var(--slate-700);
+
+    --primary: var(--orange-400);
+    --primary-hover: var(--orange-300);
+    --primary-active: var(--orange-200);
+    --primary-foreground: #1c0a02;
+    --selection: #2a1a0f;
+    --accent: var(--selection);
+    --accent-foreground: var(--orange-300);
+    --ring: var(--orange-400);
+
+    --secondary: var(--slate-800);
+    --secondary-foreground: var(--slate-100);
+    --destructive: var(--red-400);
+    --destructive-foreground: var(--slate-950);
+    --success: var(--green-400);
+    --success-subtle: rgb(22 101 52 / 0.22);
+    --success-strong: var(--green-400);
+    --warning: var(--amber-400);
+    --warning-subtle: rgb(146 64 14 / 0.24);
+    --warning-strong: var(--amber-400);
+    --danger: var(--red-400);
+    --danger-subtle: rgb(153 27 27 / 0.24);
+    --danger-strong: var(--red-400);
+    --info: var(--blue-400);
+    --info-subtle: rgb(30 64 175 / 0.24);
+    --info-strong: var(--blue-400);
+  }
+
+  * {
+    border-color: var(--border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  html {
+    background: var(--background);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--selection);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    scroll-margin: 1rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }

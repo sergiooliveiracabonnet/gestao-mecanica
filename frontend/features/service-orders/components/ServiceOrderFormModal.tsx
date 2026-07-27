@@ -11,15 +11,18 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { VehicleSearchCombobox } from '@/features/vehicles/components/VehicleSearchCombobox';
+import { CustomerSearchCombobox } from '@/features/customers/components/CustomerSearchCombobox';
 import { useUsersList } from '@/features/users/hooks/use-users';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateServiceOrder } from '../hooks/use-service-orders';
+import type { ServiceOrderListItemResponse } from '@oficina/contracts';
 
 // Mesma limitação pragmática já aceita na Feature 4 pro seletor de técnico
 // (lista fixa, sem busca). O de veículo agora usa VehicleSearchCombobox.
 const PICKER_LIMIT = 100;
 
 const serviceOrderSchema = z.object({
+  customerId: z.string().min(1, 'Selecione um cliente'),
   vehicleId: z.string().min(1, 'Selecione um veículo'),
   technicianId: z.string().optional(),
   diagnosis: z.string().optional(),
@@ -28,6 +31,7 @@ const serviceOrderSchema = z.object({
 type ServiceOrderFormValues = z.infer<typeof serviceOrderSchema>;
 
 const EMPTY_VALUES: ServiceOrderFormValues = {
+  customerId: '',
   vehicleId: '',
   technicianId: '',
   diagnosis: '',
@@ -36,9 +40,16 @@ const EMPTY_VALUES: ServiceOrderFormValues = {
 interface ServiceOrderFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialVehicleId?: string;
+  initialVehicleLabel?: string;
+  initialCustomer?: { id: string; name: string };
+  onRequestNewCustomer?: () => void;
+  onRequestNewVehicle?: () => void;
+  onCreated?: (serviceOrder: ServiceOrderListItemResponse) => void;
+  presentation?: 'modal' | 'page';
 }
 
-export function ServiceOrderFormModal({ open, onOpenChange }: ServiceOrderFormModalProps) {
+export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, initialVehicleLabel, initialCustomer, onRequestNewCustomer, onRequestNewVehicle, onCreated, presentation = 'modal' }: ServiceOrderFormModalProps) {
   const create = useCreateServiceOrder();
 
   const { data: usersData, isLoading: isLoadingTechnicians } = useUsersList({
@@ -54,9 +65,9 @@ export function ServiceOrderFormModal({ open, onOpenChange }: ServiceOrderFormMo
 
   useEffect(() => {
     if (open) {
-      form.reset(EMPTY_VALUES);
+      form.reset({ ...EMPTY_VALUES, customerId: initialCustomer?.id ?? '', vehicleId: initialVehicleId ?? '' });
     }
-  }, [open, form]);
+  }, [open, initialVehicleId, initialCustomer, form]);
 
   function onSubmit(values: ServiceOrderFormValues) {
     create.mutate(
@@ -66,7 +77,8 @@ export function ServiceOrderFormModal({ open, onOpenChange }: ServiceOrderFormMo
         diagnosis: values.diagnosis || undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: (result?: { serviceOrder: ServiceOrderListItemResponse }) => {
+          if (result?.serviceOrder) onCreated?.(result.serviceOrder);
           toast.success('Ordem de serviço aberta com sucesso!');
           onOpenChange(false);
         },
@@ -85,22 +97,36 @@ export function ServiceOrderFormModal({ open, onOpenChange }: ServiceOrderFormMo
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
+      <DialogContent data-page={presentation === 'page' ? true : undefined} className={`max-h-[92vh] overflow-y-auto ${presentation === 'page' ? '' : 'sm:max-w-2xl lg:max-w-3xl'}`}>
         <DialogHeader>
           <DialogTitle>Nova ordem de serviço</DialogTitle>
-          <DialogDescription>Abra uma OS vinculada a um veículo já cadastrado. O cliente é identificado automaticamente pelo dono do veículo.</DialogDescription>
+          <DialogDescription>Pesquise o cliente, selecione o veículo e registre o atendimento em uma única OS.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
+            <div className="rounded-button border border-primary/15 bg-primary-subtle px-3 py-2.5 text-xs leading-5 text-primary-strong">
+              Comece pelo cliente. A busca de veículos será filtrada automaticamente para mostrar apenas os carros dele.
+            </div>
+            <FormField
+              control={form.control}
+              name="customerId"
+              render={({ field }) => (
+                <FormItem>
+                  <div className="flex items-center justify-between gap-3"><FormLabel>Cliente</FormLabel>{onRequestNewCustomer && <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-primary" onClick={onRequestNewCustomer}>Cadastrar novo cliente</Button>}</div>
+                  <FormControl><CustomerSearchCombobox value={field.value} initialLabel={initialCustomer?.name} onChange={field.onChange} placeholder="Buscar por nome, CPF ou CNPJ" /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="vehicleId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Veículo</FormLabel>
+                  <div className="flex items-center justify-between gap-3"><FormLabel>Veículo</FormLabel>{onRequestNewVehicle && form.watch('customerId') && <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-primary" onClick={onRequestNewVehicle}>Cadastrar novo veículo</Button>}</div>
                   <FormControl>
-                    <VehicleSearchCombobox value={field.value} onChange={field.onChange} />
+                    <VehicleSearchCombobox value={field.value} customerId={form.watch('customerId')} initialLabel={initialVehicleLabel} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -143,8 +169,11 @@ export function ServiceOrderFormModal({ open, onOpenChange }: ServiceOrderFormMo
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button type="submit" disabled={create.isPending}>
+            <DialogFooter className="gap-2 border-t border-border pt-4 sm:gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={create.isPending} className="sm:min-w-32">
                 {create.isPending ? 'Abrindo...' : 'Abrir OS'}
               </Button>
             </DialogFooter>

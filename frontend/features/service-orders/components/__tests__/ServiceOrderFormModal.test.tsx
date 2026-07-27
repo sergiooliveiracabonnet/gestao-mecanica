@@ -6,6 +6,7 @@ import { ServiceOrderFormModal } from '../ServiceOrderFormModal';
 import { serviceOrdersApi } from '../../api/service-orders-api';
 import { vehiclesApi } from '@/features/vehicles/api/vehicles-api';
 import { usersApi } from '@/features/users/api/users-api';
+import { customersApi } from '@/features/customers/api/customers-api';
 
 vi.mock('../../api/service-orders-api', () => ({
   serviceOrdersApi: { create: vi.fn() },
@@ -17,6 +18,10 @@ vi.mock('@/features/vehicles/api/vehicles-api', () => ({
 
 vi.mock('@/features/users/api/users-api', () => ({
   usersApi: { list: vi.fn() },
+}));
+
+vi.mock('@/features/customers/api/customers-api', () => ({
+  customersApi: { list: vi.fn() },
 }));
 
 const { toastMock } = vi.hoisted(() => ({
@@ -73,12 +78,13 @@ describe('ServiceOrderFormModal', () => {
     vi.clearAllMocks();
     vi.mocked(vehiclesApi.list).mockResolvedValue({ items: [vehicle], total: 1, offset: 0, limit: 100, hasMore: false });
     vi.mocked(usersApi.list).mockResolvedValue({ items: [technician], total: 1, offset: 0, limit: 100, hasMore: false });
+    vi.mocked(customersApi.list).mockResolvedValue({ items: [{ id: 'c1', tenantId: 't1', type: 'PF', document: '11144477735', name: 'JoÃ£o da Silva', phone: '11999998888', createdAt: '2026-01-01T00:00:00Z' }], total: 1, offset: 0, limit: 20, hasMore: false });
   });
 
   it('shows the vehicle search field and the technician picker', async () => {
     renderWithClient(<ServiceOrderFormModal open onOpenChange={() => {}} />);
 
-    expect(screen.getAllByRole('combobox')).toHaveLength(2);
+    expect(screen.getAllByRole('combobox')).toHaveLength(3);
     expect(screen.getByRole('button', { name: /abrir os/i })).toBeInTheDocument();
   });
 
@@ -98,7 +104,9 @@ describe('ServiceOrderFormModal', () => {
     const user = userEvent.setup();
     renderWithClient(<ServiceOrderFormModal open onOpenChange={onOpenChange} />);
 
-    const [vehicleSearchInput] = screen.getAllByRole('combobox');
+    const [customerSearchInput, vehicleSearchInput] = screen.getAllByRole('combobox');
+    await user.type(customerSearchInput, 'JoÃ£o');
+    await user.click(await screen.findByRole('option', { name: /JoÃ£o da Silva/ }));
     await user.type(vehicleSearchInput, 'Uno');
     await user.click(await screen.findByRole('option', { name: /Fiat Uno · ABC1D23/ }));
 

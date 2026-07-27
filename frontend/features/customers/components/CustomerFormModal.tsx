@@ -1,8 +1,8 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm, type FieldErrors } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import type { CustomerAddress, CustomerListItemResponse } from '@oficina/contracts';
@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateCustomer, useUpdateCustomer } from '../hooks/use-customers';
 import { CustomerGeneralTab } from './tabs/CustomerGeneralTab';
@@ -94,10 +95,13 @@ interface CustomerFormModalProps {
   onOpenChange: (open: boolean) => void;
   /** undefined = modo criação, definido = modo edição (type/document viram somente leitura). */
   customer?: CustomerListItemResponse;
+  onCreated?: (customer: CustomerListItemResponse) => void;
+  presentation?: 'modal' | 'page';
 }
 
-export function CustomerFormModal({ open, onOpenChange, customer }: CustomerFormModalProps) {
+export function CustomerFormModal({ open, onOpenChange, customer, onCreated, presentation = 'modal' }: CustomerFormModalProps) {
   const isEditing = Boolean(customer);
+  const [activeTab, setActiveTab] = useState('general');
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
   const isPending = create.isPending || update.isPending;
@@ -111,6 +115,7 @@ export function CustomerFormModal({ open, onOpenChange, customer }: CustomerForm
     if (!open) {
       return;
     }
+    setActiveTab('general');
     form.reset(
       customer
         ? {
@@ -134,7 +139,8 @@ export function CustomerFormModal({ open, onOpenChange, customer }: CustomerForm
   }, [open, customer, form]);
 
   function onSubmit(values: CustomerFormValues) {
-    const onSuccess = () => {
+    const onSuccess = (result?: { customer: CustomerListItemResponse }) => {
+      if (!isEditing && result?.customer) onCreated?.(result.customer);
       toast.success(isEditing ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
       onOpenChange(false);
     };
@@ -171,9 +177,27 @@ export function CustomerFormModal({ open, onOpenChange, customer }: CustomerForm
     }
   }
 
+  function onInvalid(errors: FieldErrors<CustomerFormValues>) {
+    const firstPath = Object.keys(errors)[0] ?? '';
+    if (firstPath.startsWith('address.') || ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'].includes(firstPath)) {
+      setActiveTab('general');
+    } else if (firstPath.startsWith('secondaryContact')) {
+      setActiveTab('contact');
+    } else if (firstPath.startsWith('preferredContact')) {
+      setActiveTab('preferences');
+    } else if (firstPath === 'notes') {
+      setActiveTab('notes');
+    }
+  }
+
+  const hasGeneralErrors = ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'address'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
+  const hasContactErrors = ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
+  const hasPreferenceErrors = ['preferredContactChannel', 'preferredContactTime'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
+  const hasNotesErrors = Boolean(form.formState.errors.notes);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl lg:max-w-3xl">
+    <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
+      <DialogContent data-page={presentation === 'page' ? true : undefined} className={`max-h-[92vh] overflow-y-auto ${presentation === 'page' ? '' : 'sm:max-w-4xl lg:max-w-5xl'}`}>
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar cliente' : 'Novo cliente'}</DialogTitle>
           <DialogDescription>
@@ -183,14 +207,14 @@ export function CustomerFormModal({ open, onOpenChange, customer }: CustomerForm
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <Tabs defaultValue="general">
-              <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="general">Dados Gerais</TabsTrigger>
-                <TabsTrigger value="contact">Contato</TabsTrigger>
-                <TabsTrigger value="preferences">Preferências</TabsTrigger>
-                <TabsTrigger value="notes">Observações</TabsTrigger>
-                <TabsTrigger value="history">Histórico</TabsTrigger>
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="flex w-full justify-start gap-1 overflow-x-auto p-1">
+                <TabsTrigger className="shrink-0" value="general">Dados Gerais{hasGeneralErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="contact">Contato{hasContactErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="preferences">Preferências{hasPreferenceErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="notes">Observações{hasNotesErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="history">Histórico</TabsTrigger>
               </TabsList>
               <TabsContent value="general">
                 <CustomerGeneralTab form={form} isEditing={isEditing} />
@@ -208,8 +232,11 @@ export function CustomerFormModal({ open, onOpenChange, customer }: CustomerForm
                 <CustomerHistoryTab customer={customer} />
               </TabsContent>
             </Tabs>
-            <DialogFooter>
-              <Button type="submit" disabled={isPending}>
+            <DialogFooter className="gap-2 border-t border-border pt-4 sm:gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending} className="sm:min-w-40">
                 {isPending ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
               </Button>
             </DialogFooter>

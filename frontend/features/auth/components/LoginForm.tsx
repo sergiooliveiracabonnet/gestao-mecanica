@@ -29,7 +29,7 @@ export function LoginForm() {
   function onSubmit(values: LoginFormValues) {
     login.mutate(values, {
       onSuccess: () => {
-        router.push('/users');
+        router.push('/dashboard');
       },
       onError: (error) => {
         toast.error(extractErrorMessage(error, 'E-mail ou senha inválidos.'));
@@ -66,7 +66,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <Button type="submit" disabled={login.isPending} className="mt-2">
+        <Button type="submit" loading={login.isPending} className="mt-2">
           {login.isPending ? 'Entrando...' : 'Entrar'}
         </Button>
       </form>

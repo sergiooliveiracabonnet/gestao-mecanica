@@ -31,3 +31,8 @@ Thumbs.db
 
 # worktrees (managed by spartan build workflow, only relevant in main checkout)
 .worktrees/
+
+# generated QA/test artifacts (screenshots, reports) — not source
+frontend/artifacts/
+frontend/test-results/
+frontend/frontend/
