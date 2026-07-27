@@ -11,6 +11,7 @@ import type {
   DeleteServiceOrderReceiptRequest,
   ConfigureServiceOrderPaymentRequest,
   ConfirmServiceOrderInstallmentRequest,
+  ServiceOrderPhotoCategory,
 } from '@oficina/contracts';
 import { serviceOrdersApi } from '../api/service-orders-api';
 
@@ -134,5 +135,31 @@ export function useDueServiceOrderInstallments(limit = 20) {
     queryKey: ['due-service-order-installments', limit],
     queryFn: () => serviceOrdersApi.dueInstallments(limit),
     enabled: limit > 0,
+  });
+}
+
+const SERVICE_ORDER_PHOTOS_KEY = 'service-order-photos';
+
+export function useServiceOrderPhotos(serviceOrderId: string) {
+  return useQuery({ queryKey: [SERVICE_ORDER_PHOTOS_KEY, serviceOrderId], queryFn: () => serviceOrdersApi.listPhotos(serviceOrderId), enabled: Boolean(serviceOrderId) });
+}
+
+export function useServiceOrderPhotoBlob(id: string) {
+  return useQuery({ queryKey: ['service-order-photo-content', id], queryFn: () => serviceOrdersApi.photoBlob(id), staleTime: 5 * 60_000 });
+}
+
+export function useUploadServiceOrderPhoto() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { serviceOrderId: string; category: ServiceOrderPhotoCategory; caption?: string; file: File }) => serviceOrdersApi.uploadPhoto(input),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: [SERVICE_ORDER_PHOTOS_KEY, input.serviceOrderId] }),
+  });
+}
+
+export function useDeleteServiceOrderPhoto(serviceOrderId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: serviceOrdersApi.deletePhoto,
+    onSuccess: () => client.invalidateQueries({ queryKey: [SERVICE_ORDER_PHOTOS_KEY, serviceOrderId] }),
   });
 }

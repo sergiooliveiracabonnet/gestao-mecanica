@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+﻿import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -43,6 +43,9 @@ const baseServiceOrder: ServiceOrderResponse = {
   openedAt: '2026-07-01T00:00:00Z',
   createdAt: '2026-07-01T00:00:00Z',
   totalAmountCents: 13000,
+  receivedAmountCents: 0,
+  outstandingAmountCents: 13000,
+  paymentStatus: 'AWAITING_PAYMENT',
   items: [
     {
       id: 'item-1',
@@ -170,3 +173,4 @@ describe('ServiceOrderItemsSection', () => {
     await waitFor(() => expect(serviceOrderItemsApi.delete).toHaveBeenCalledWith({ id: 'item-1' }));
   });
 });
+

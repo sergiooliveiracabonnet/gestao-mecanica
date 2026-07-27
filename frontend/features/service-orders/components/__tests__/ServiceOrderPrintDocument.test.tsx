@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+﻿import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { ServiceOrderResponse } from '@oficina/contracts';
 import { ServiceOrderPrintDocument } from '../ServiceOrderPrintDocument';
@@ -29,6 +29,9 @@ const serviceOrder: ServiceOrderResponse = {
     items: [{ id: 'brakes', label: 'Freios', status: 'critical', note: 'Trocar pastilhas' }],
   },
   totalAmountCents: 35000,
+  receivedAmountCents: 0,
+  outstandingAmountCents: 35000,
+  paymentStatus: 'AWAITING_PAYMENT',
   items: [{
     id: 'item1',
     serviceOrderId: 'so1',
@@ -73,3 +76,4 @@ describe('ServiceOrderPrintDocument', () => {
     expect(screen.getByText('Histórico da OS')).toBeInTheDocument();
   });
 });
+

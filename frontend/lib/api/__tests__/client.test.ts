@@ -7,7 +7,7 @@ function ok(config: InternalAxiosRequestConfig, data: unknown) {
   return { data, status: 200, statusText: 'OK', headers: {}, config };
 }
 
-function unauthorized(config: InternalAxiosRequestConfig) {
+function unauthorized(config: InternalAxiosRequestConfig): never {
   const error = new Error('Unauthorized') as Error & { response: unknown; config: unknown; isAxiosError: boolean };
   error.response = { status: 401, data: {}, config };
   error.config = config;

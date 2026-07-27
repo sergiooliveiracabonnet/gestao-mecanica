@@ -1,4 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Res, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import type { DashboardBusinessSummaryResponse, DueServiceOrderInstallmentsResponse, PaginationData, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListItemResponse, ServiceOrderReceiptResponse, ServiceOrderResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
@@ -16,6 +18,8 @@ import {
 import { CreateServiceOrderItemDto, DeleteServiceOrderItemDto, UpdateServiceOrderItemDto } from '../dto/service-order-item.dto';
 import { ConfirmServiceOrderReceiptDto, DeleteServiceOrderReceiptDto } from '../dto/service-order-receipt.dto';
 import { ConfigureServiceOrderPaymentDto, ConfirmServiceOrderInstallmentDto, ListDueServiceOrderInstallmentsDto } from '../dto/service-order-installment.dto';
+import { DeleteServiceOrderPhotoDto, GetServiceOrderPhotoDto, ListServiceOrderPhotosDto, UploadServiceOrderPhotoDto } from '../dto/service-order-photo.dto';
+import { ServiceOrderPhotoManager } from '../managers/service-order-photo.manager';
 
 // Todos os 4 papéis têm acesso total a todo endpoint — divergência
 // deliberada do padrão de Clientes/Veículos (spec: "todos os papéis fazem
@@ -29,7 +33,7 @@ const ITEM_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK'] as const;
 
 @Controller('api/v1')
 export class ServiceOrdersController {
-  constructor(private readonly serviceOrderManager: ServiceOrderManager) {}
+  constructor(private readonly serviceOrderManager: ServiceOrderManager, private readonly photoManager: ServiceOrderPhotoManager) {}
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
@@ -147,5 +151,38 @@ export class ServiceOrdersController {
   @Post('service-orders/installments/due')
   async dueInstallments(@Body() body: ListDueServiceOrderInstallmentsDto): Promise<DueServiceOrderInstallmentsResponse> {
     return this.serviceOrderManager.listDueInstallments(body.limit);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
+  @Get('service-orders/photos')
+  listPhotos(@Query() query: ListServiceOrderPhotosDto) {
+    return this.photoManager.list(query.serviceOrderId);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
+  @Get('service-orders/photos/content')
+  async photoContent(@Query() query: GetServiceOrderPhotoDto, @Res({ passthrough: true }) response: Response) {
+    const photo = await this.photoManager.content(query.id);
+    response.setHeader('Content-Type', photo.mimeType);
+    response.setHeader('Cache-Control', 'private, max-age=300');
+    return new StreamableFile(photo.buffer);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
+  @Post('service-orders/photos')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
+  uploadPhoto(@CurrentUser() user: AuthenticatedUser, @Body() body: UploadServiceOrderPhotoDto, @UploadedFile() file?: Express.Multer.File) {
+    return this.photoManager.upload(user, body, file);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/photos/delete')
+  deletePhoto(@CurrentUser() user: AuthenticatedUser, @Body() body: DeleteServiceOrderPhotoDto) {
+    return this.photoManager.delete(user, body.id);
   }
 }

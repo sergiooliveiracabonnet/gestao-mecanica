@@ -9,6 +9,7 @@ build/
 .next-stale-*/
 .turbo/
 coverage/
+uploads/
 *.tsbuildinfo
 
 # env

@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+﻿import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -234,6 +234,9 @@ describe('CustomerFormModal', () => {
           openedAt: '2026-01-01T00:00:00Z',
           createdAt: '2026-01-01T00:00:00Z',
           totalAmountCents: 0,
+          receivedAmountCents: 0,
+          outstandingAmountCents: 0,
+          paymentStatus: 'AWAITING_PAYMENT',
         },
       ],
       total: 1,
@@ -266,6 +269,9 @@ describe('CustomerFormModal', () => {
       openedAt: '2026-01-01T00:00:00Z',
       createdAt: '2026-01-01T00:00:00Z',
       totalAmountCents: 0,
+      receivedAmountCents: 0,
+      outstandingAmountCents: 0,
+      paymentStatus: 'AWAITING_PAYMENT' as const,
     });
     vi.mocked(serviceOrdersApi.list).mockImplementation(async (request) => ({
       items: [soItem(request.offset === 0 ? 'so-page1' : 'so-page2')],
@@ -290,3 +296,4 @@ describe('CustomerFormModal', () => {
     expect(customersApi.update).not.toHaveBeenCalled();
   });
 });
+

@@ -15,6 +15,8 @@ import type {
   ConfirmServiceOrderInstallmentRequest,
   DueServiceOrderInstallmentsResponse,
   ServiceOrderInstallmentResponse,
+  ServiceOrderPhotoCategory,
+  ServiceOrderPhotoResponse,
 } from '@oficina/contracts';
 
 export const serviceOrdersApi = {
@@ -61,5 +63,22 @@ export const serviceOrdersApi = {
   },
   async dueInstallments(limit = 20): Promise<DueServiceOrderInstallmentsResponse> {
     return (await apiClient.post('/api/v1/service-orders/installments/due', { limit })).data;
+  },
+  async listPhotos(serviceOrderId: string): Promise<{ photos: ServiceOrderPhotoResponse[] }> {
+    return (await apiClient.get('/api/v1/service-orders/photos', { params: { service_order_id: serviceOrderId } })).data;
+  },
+  async uploadPhoto(input: { serviceOrderId: string; category: ServiceOrderPhotoCategory; caption?: string; file: File }): Promise<{ photo: ServiceOrderPhotoResponse }> {
+    const form = new FormData();
+    form.append('serviceOrderId', input.serviceOrderId);
+    form.append('category', input.category);
+    if (input.caption) form.append('caption', input.caption);
+    form.append('file', input.file);
+    return (await apiClient.post('/api/v1/service-orders/photos', form)).data;
+  },
+  async deletePhoto(id: string): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/service-orders/photos/delete', { id })).data;
+  },
+  async photoBlob(id: string): Promise<Blob> {
+    return (await apiClient.get('/api/v1/service-orders/photos/content', { params: { id }, responseType: 'blob' })).data;
   },
 };

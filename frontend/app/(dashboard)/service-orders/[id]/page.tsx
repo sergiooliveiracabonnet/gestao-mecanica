@@ -18,6 +18,7 @@ import { StatusTransitionButtons } from '@/features/service-orders/components/St
 import { VehicleServiceHistoryDialog } from '@/features/service-orders/components/VehicleServiceHistoryDialog';
 import { ServiceOrderPaymentSection } from '@/features/service-orders/components/ServiceOrderPaymentSection';
 import { ServiceOrderQuoteActions } from '@/features/service-orders/components/ServiceOrderQuoteActions';
+import { ServiceOrderPhotoGallery } from '@/features/service-orders/components/ServiceOrderPhotoGallery';
 import { parseChecklist, serializeChecklist, type InspectionItem } from '@/features/service-orders/checklist';
 import { useServiceOrder, useUpdateServiceOrder } from '@/features/service-orders/hooks/use-service-orders';
 import { useUsersList } from '@/features/users/hooks/use-users';
@@ -141,6 +142,8 @@ export default function ServiceOrderDetailPage() {
         {(hasPermission(currentUser, 'receipts.manage') || (currentUser?.role === 'ADMIN' && (!currentUser.profileName || currentUser.profileName === 'ADMIN'))) && <ServiceOrderPaymentSection serviceOrder={serviceOrder} />}
         <StepActions onBack={() => setActiveStep(3)} />
       </div>}
+
+      <ServiceOrderPhotoGallery serviceOrderId={serviceOrder.id} canManage={hasPermission(currentUser, 'service_orders.manage')} />
 
       <details className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5"><summary className="cursor-pointer text-lg font-bold tracking-tight text-text">Histórico da OS</summary><div className="mt-4"><StatusHistoryTimeline history={serviceOrder.statusHistory ?? []} /></div></details>
 

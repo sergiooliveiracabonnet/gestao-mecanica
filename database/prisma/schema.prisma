@@ -349,6 +349,24 @@ model MaintenanceAlert {
   @@map("maintenance_alerts")
 }
 
+model ServiceOrderPhoto {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  serviceOrderId String    @map("service_order_id") @db.Uuid
+  category       String
+  caption        String?
+  storageKey     String    @map("storage_key")
+  originalName   String    @map("original_name")
+  mimeType       String    @map("mime_type")
+  sizeBytes      Int       @map("size_bytes")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, serviceOrderId, category])
+  @@map("service_order_photos")
+}
+
 model ServiceOrderReceipt {
   id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   tenantId       String    @map("tenant_id") @db.Uuid

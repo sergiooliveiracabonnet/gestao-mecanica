@@ -354,6 +354,7 @@ export class ServiceOrderManager {
 
   async businessSummary(now = new Date()): Promise<DashboardBusinessSummaryResponse> {
     const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const sixMonthsStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const orders = await this.serviceOrderRepository.listForBusinessSummary(sixMonthsStart);
     const [totalsByOrderId, financialItems, allReceipts, cashReceipts, technicians, vehicles, customers] = await Promise.all([
