@@ -69,6 +69,14 @@ describe('Vehicles (e2e)', () => {
     return response.body.customer.id as string;
   }
 
+  async function createCustomerWithNameAndDocument(adminToken: string, name: string, document: string): Promise<string> {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/customers')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ type: 'PF', document, name, phone: '11999998888' });
+    return response.body.customer.id as string;
+  }
+
   let plateCounter = 0;
   function uniquePlate(): string {
     plateCounter += 1;
@@ -252,6 +260,94 @@ describe('Vehicles (e2e)', () => {
       .set('Authorization', `Bearer ${admin.access_token}`)
       .send({ offset: 0, limit: 10, customer_id: customerId });
     expect(byCustomer.body.items.every((item: { customer_id: string }) => item.customer_id === customerId)).toBe(true);
+  });
+
+  it('matches a vehicle by the owning customer name, even when no vehicle field matches', async () => {
+    const admin = await signupAdmin(`searchname-${Date.now()}`);
+    const customerId = await createCustomerWithNameAndDocument(admin.access_token, 'Zeferino Alcatrãozinho da Silva', generateValidCpf());
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send(vehiclePayload(customerId, 'searchname'));
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/vehicles/list')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ offset: 0, limit: 10, search: 'Alcatrãozinho', match_owner: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body.items.some((item: { customer_id: string }) => item.customer_id === customerId)).toBe(true);
+  });
+
+  it('does NOT match by owner name/document when match_owner is not sent (opt-in, default false)', async () => {
+    const admin = await signupAdmin(`searchnamegate-${Date.now()}`);
+    const customerId = await createCustomerWithNameAndDocument(admin.access_token, 'Zeferino Alcatrãozinho da Silva', generateValidCpf());
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send(vehiclePayload(customerId, 'searchnamegate'));
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/vehicles/list')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ offset: 0, limit: 10, search: 'Alcatrãozinho' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(0);
+  });
+
+  it('matches a vehicle by the owning customer document (CPF), even when no vehicle field matches', async () => {
+    const admin = await signupAdmin(`searchdoc-${Date.now()}`);
+    const document = generateValidCpf();
+    const customerId = await createCustomerWithNameAndDocument(admin.access_token, 'Cliente Documento', document);
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send(vehiclePayload(customerId, 'searchdoc'));
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/vehicles/list')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ offset: 0, limit: 10, search: document, match_owner: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body.items.some((item: { customer_id: string }) => item.customer_id === customerId)).toBe(true);
+  });
+
+  it('returns no results when the search matches neither vehicle fields nor any customer', async () => {
+    const admin = await signupAdmin(`searchnone-${Date.now()}`);
+    const customerId = await createCustomer(admin.access_token, 'searchnone');
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send(vehiclePayload(customerId, 'searchnone'));
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/vehicles/list')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ offset: 0, limit: 10, search: 'termo-que-nao-bate-em-nada-xyz', match_owner: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(0);
+  });
+
+  it('search by customer name does not leak vehicles from another tenant', async () => {
+    const adminA = await signupAdmin(`searchisoA-${Date.now()}`);
+    const adminB = await signupAdmin(`searchisoB-${Date.now()}`);
+    const sharedName = `Cliente Compartilhado ${Date.now()}`;
+    const customerA = await createCustomerWithNameAndDocument(adminA.access_token, sharedName, generateValidCpf());
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${adminA.access_token}`)
+      .send(vehiclePayload(customerA, 'searchisoA'));
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/vehicles/list')
+      .set('Authorization', `Bearer ${adminB.access_token}`)
+      .send({ offset: 0, limit: 10, search: sharedName, match_owner: true });
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(0);
   });
 
   it('soft deletes a vehicle', async () => {

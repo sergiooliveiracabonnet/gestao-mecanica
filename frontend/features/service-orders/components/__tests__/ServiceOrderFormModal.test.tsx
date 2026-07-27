@@ -75,7 +75,7 @@ describe('ServiceOrderFormModal', () => {
     vi.mocked(usersApi.list).mockResolvedValue({ items: [technician], total: 1, offset: 0, limit: 100, hasMore: false });
   });
 
-  it('shows the vehicle and technician pickers', async () => {
+  it('shows the vehicle search field and the technician picker', async () => {
     renderWithClient(<ServiceOrderFormModal open onOpenChange={() => {}} />);
 
     expect(screen.getAllByRole('combobox')).toHaveLength(2);
@@ -98,8 +98,8 @@ describe('ServiceOrderFormModal', () => {
     const user = userEvent.setup();
     renderWithClient(<ServiceOrderFormModal open onOpenChange={onOpenChange} />);
 
-    const [vehicleTrigger] = await screen.findAllByRole('combobox');
-    await user.click(vehicleTrigger);
+    const [vehicleSearchInput] = screen.getAllByRole('combobox');
+    await user.type(vehicleSearchInput, 'Uno');
     await user.click(await screen.findByRole('option', { name: /Fiat Uno · ABC1D23/ }));
 
     await user.click(screen.getByRole('button', { name: /abrir os/i }));

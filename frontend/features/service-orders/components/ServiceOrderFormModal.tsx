@@ -10,13 +10,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useVehiclesList } from '@/features/vehicles/hooks/use-vehicles';
+import { VehicleSearchCombobox } from '@/features/vehicles/components/VehicleSearchCombobox';
 import { useUsersList } from '@/features/users/hooks/use-users';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateServiceOrder } from '../hooks/use-service-orders';
 
-// Mesma limitação pragmática já aceita na Feature 4 pro seletor de cliente
-// (sem lib de combobox nova, sem busca assíncrona).
+// Mesma limitação pragmática já aceita na Feature 4 pro seletor de técnico
+// (lista fixa, sem busca). O de veículo agora usa VehicleSearchCombobox.
 const PICKER_LIMIT = 100;
 
 const serviceOrderSchema = z.object({
@@ -41,7 +41,6 @@ interface ServiceOrderFormModalProps {
 export function ServiceOrderFormModal({ open, onOpenChange }: ServiceOrderFormModalProps) {
   const create = useCreateServiceOrder();
 
-  const { data: vehiclesData, isLoading: isLoadingVehicles } = useVehiclesList({ offset: 0, limit: PICKER_LIMIT });
   const { data: usersData, isLoading: isLoadingTechnicians } = useUsersList({
     offset: 0,
     limit: PICKER_LIMIT,
@@ -100,20 +99,9 @@ export function ServiceOrderFormModal({ open, onOpenChange }: ServiceOrderFormMo
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Veículo</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={isLoadingVehicles ? 'Carregando veículos...' : 'Escolha um veículo'} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {vehiclesData?.items.map((vehicle) => (
-                        <SelectItem key={vehicle.id} value={vehicle.id}>
-                          {vehicle.brand} {vehicle.model} · {vehicle.plate} ({vehicle.customerName})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <VehicleSearchCombobox value={field.value} onChange={field.onChange} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

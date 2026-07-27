@@ -108,7 +108,11 @@ export class VehicleRepository {
     });
   }
 
-  async listByTenant(offset: number, limit: number, search?: string, customerId?: string) {
+  // `matchingCustomerIds`: ids de clientes cujo nome/documento bateram com
+  // `search` (ver CustomerRepository.searchIdsByNameOrDocument) — sem
+  // relação FK entre Vehicle e Customer, o casamento por dono é feito assim,
+  // adicionado ao mesmo OR de marca/modelo/placa.
+  async listByTenant(offset: number, limit: number, search?: string, customerId?: string, matchingCustomerIds?: string[]) {
     const where = {
       deletedAt: null,
       ...(customerId ? { customerId } : {}),
@@ -118,6 +122,7 @@ export class VehicleRepository {
               { brand: { contains: search, mode: 'insensitive' as const } },
               { model: { contains: search, mode: 'insensitive' as const } },
               { plate: { contains: search, mode: 'insensitive' as const } },
+              ...(matchingCustomerIds && matchingCustomerIds.length > 0 ? [{ customerId: { in: matchingCustomerIds } }] : []),
             ],
           }
         : {}),

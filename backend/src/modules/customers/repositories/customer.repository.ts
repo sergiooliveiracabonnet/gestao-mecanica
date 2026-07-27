@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { CustomerAddress } from '@oficina/contracts';
 import type { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
@@ -46,6 +46,8 @@ export interface ListCustomersResult<T> {
 
 @Injectable()
 export class CustomerRepository {
+  private readonly logger = new Logger(CustomerRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // `this.prisma.client` (tenant-scoped): toda operação de Customer roda
@@ -107,6 +109,27 @@ export class CustomerRepository {
       where: { id: { in: ids }, deletedAt: null },
       select: { id: true },
     });
+    return customers.map((customer) => customer.id);
+  }
+
+  // Usado por VehicleManager.list pra casar veículos pelo nome/documento do
+  // cliente dono — sem relação FK entre Vehicle e Customer (SCHEMA.md: sem
+  // REFERENCES), o casamento é em duas etapas: aqui só os ids que batem;
+  // VehicleRepository.listByTenant faz o OR com marca/modelo/placa. `limit`
+  // é uma rede de segurança contra uma cláusula IN gigante se o termo bater
+  // em muitos clientes.
+  async searchIdsByNameOrDocument(search: string, limit = 500) {
+    const customers = await this.prisma.client.customer.findMany({
+      where: {
+        deletedAt: null,
+        OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { document: { contains: search } }],
+      },
+      select: { id: true },
+      take: limit,
+    });
+    if (customers.length === limit) {
+      this.logger.warn(`searchIdsByNameOrDocument truncou em ${limit} resultados para o termo de busca — resultado pode estar incompleto`);
+    }
     return customers.map((customer) => customer.id);
   }
 

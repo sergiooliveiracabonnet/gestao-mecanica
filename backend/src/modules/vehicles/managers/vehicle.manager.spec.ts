@@ -16,6 +16,7 @@ function buildManager() {
   const customerRepository = {
     byId: jest.fn(),
     byIds: jest.fn(),
+    searchIdsByNameOrDocument: jest.fn(),
   };
   const auditLog = { record: jest.fn() };
 
@@ -220,7 +221,7 @@ describe('VehicleManager', () => {
 
       const result = await deps.manager.list({ offset: 0, limit: 20, search: 'Uno' });
 
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'Uno', undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'Uno', undefined, undefined);
       expect(deps.customerRepository.byIds).toHaveBeenCalledWith(['customer-1']);
       expect(result.items[0].customerName).toBe('João da Silva');
     });
@@ -232,7 +233,32 @@ describe('VehicleManager', () => {
 
       await deps.manager.list({ offset: 0, limit: 20, customerId: 'customer-1' });
 
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, 'customer-1');
+      expect(deps.customerRepository.searchIdsByNameOrDocument).not.toHaveBeenCalled();
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, 'customer-1', undefined);
+    });
+
+    it('does not match by owner name/document when matchOwner is not set, even with a search term', async () => {
+      const deps = buildManager();
+      deps.vehicleRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
+      deps.customerRepository.byIds.mockResolvedValue([]);
+
+      await deps.manager.list({ offset: 0, limit: 20, search: 'João' });
+
+      expect(deps.customerRepository.searchIdsByNameOrDocument).not.toHaveBeenCalled();
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', undefined, undefined);
+    });
+
+    it('also matches vehicles whose owning customer name or document matches the search term when matchOwner is set', async () => {
+      const deps = buildManager();
+      deps.customerRepository.searchIdsByNameOrDocument.mockResolvedValue(['customer-1']);
+      deps.vehicleRepository.listByTenant.mockResolvedValue({ items: [baseVehicle], total: 1 });
+      deps.customerRepository.byIds.mockResolvedValue([baseCustomer]);
+
+      const result = await deps.manager.list({ offset: 0, limit: 20, search: 'João', matchOwner: true });
+
+      expect(deps.customerRepository.searchIdsByNameOrDocument).toHaveBeenCalledWith('João');
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', undefined, ['customer-1']);
+      expect(result.items[0].plate).toBe('ABC1D23');
     });
   });
 });

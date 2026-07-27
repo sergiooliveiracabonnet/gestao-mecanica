@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 import type {
   CreateVehicleRequest,
   DeleteVehicleRequest,
@@ -116,6 +116,10 @@ export class VehicleListDto implements VehicleListRequest {
   @IsOptional()
   @IsUUID('4', { message: 'customer_id must be a valid id' })
   customerId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  matchOwner?: boolean;
 
   @IsInt()
   @Min(0)

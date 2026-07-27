@@ -33,4 +33,9 @@ export interface DeleteVehicleRequest {
 export interface VehicleListRequest extends PageableRequest {
   search?: string;
   customerId?: string;
+  // Além de marca/modelo/placa, também casa `search` contra o nome/documento
+  // do cliente dono do veículo. Opt-in explícito (default false) — só o
+  // VehicleSearchCombobox (abertura de OS) liga isso; a tela de Veículos
+  // mantém o comportamento de busca original.
+  matchOwner?: boolean;
 }
