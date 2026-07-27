@@ -1,6 +1,22 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
+  "globalEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "JWT_SECRET",
+    "JWT_ACCESS_TOKEN_TTL_SECONDS",
+    "REFRESH_TOKEN_TTL_SECONDS",
+    "INVITE_TOKEN_TTL_SECONDS",
+    "SETTINGS_ENCRYPTION_KEY",
+    "CORS_ORIGIN",
+    "FRONTEND_URL",
+    "BACKEND_PORT",
+    "UPLOAD_DIR",
+    "THROTTLE_TTL",
+    "THROTTLE_LIMIT",
+    "NEXT_PUBLIC_API_URL"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
