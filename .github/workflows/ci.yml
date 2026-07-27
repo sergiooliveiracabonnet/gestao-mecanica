@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, develop]
+    branches: [master, main, develop]
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
