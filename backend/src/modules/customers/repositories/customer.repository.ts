@@ -128,7 +128,7 @@ export class CustomerRepository {
       take: limit,
     });
     if (customers.length === limit) {
-      this.logger.warn(`searchIdsByNameOrDocument truncated at ${limit} matches for a search term — results may be incomplete`);
+      this.logger.warn(`searchIdsByNameOrDocument truncou em ${limit} resultados para o termo de busca — resultado pode estar incompleto`);
     }
     return customers.map((customer) => customer.id);
   }
