@@ -17,6 +17,9 @@ export interface UserResponse {
   email: string;
   name: string;
   role: UserRole;
+  profileId?: string;
+  profileName?: string;
+  permissions?: import('./access-profile.response').PermissionKey[];
   status: UserStatus;
   createdAt: string;
 }

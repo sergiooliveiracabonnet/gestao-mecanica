@@ -7,6 +7,10 @@ import type {
   ServiceOrderListRequest,
   TransitionServiceOrderRequest,
   UpdateServiceOrderRequest,
+  ConfirmServiceOrderReceiptRequest,
+  DeleteServiceOrderReceiptRequest,
+  ConfigureServiceOrderPaymentRequest,
+  ConfirmServiceOrderInstallmentRequest,
 } from '@oficina/contracts';
 import { serviceOrdersApi } from '../api/service-orders-api';
 
@@ -76,5 +80,59 @@ export function useDeleteServiceOrder() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [SERVICE_ORDERS_LIST_KEY] });
     },
+  });
+}
+
+export function useConfirmServiceOrderReceipt() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: ConfirmServiceOrderReceiptRequest) => serviceOrdersApi.confirmReceipt(request),
+    onSuccess: (_, request) => {
+      client.invalidateQueries({ queryKey: [SERVICE_ORDER_KEY, request.serviceOrderId] });
+      client.invalidateQueries({ queryKey: ['dashboard-business-summary'] });
+    },
+  });
+}
+
+export function useDeleteServiceOrderReceipt(serviceOrderId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: DeleteServiceOrderReceiptRequest) => serviceOrdersApi.deleteReceipt(request),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: [SERVICE_ORDER_KEY, serviceOrderId] });
+      client.invalidateQueries({ queryKey: ['dashboard-business-summary'] });
+    },
+  });
+}
+
+export function useConfigureServiceOrderPayment() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: ConfigureServiceOrderPaymentRequest) => serviceOrdersApi.configurePayment(request),
+    onSuccess: (_, request) => {
+      client.invalidateQueries({ queryKey: [SERVICE_ORDER_KEY, request.serviceOrderId] });
+      client.invalidateQueries({ queryKey: ['due-service-order-installments'] });
+      client.invalidateQueries({ queryKey: ['dashboard-business-summary'] });
+    },
+  });
+}
+
+export function useConfirmServiceOrderInstallment(serviceOrderId?: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: ConfirmServiceOrderInstallmentRequest) => serviceOrdersApi.confirmInstallment(request),
+    onSuccess: () => {
+      if (serviceOrderId) client.invalidateQueries({ queryKey: [SERVICE_ORDER_KEY, serviceOrderId] });
+      client.invalidateQueries({ queryKey: ['due-service-order-installments'] });
+      client.invalidateQueries({ queryKey: ['dashboard-business-summary'] });
+    },
+  });
+}
+
+export function useDueServiceOrderInstallments(limit = 20) {
+  return useQuery({
+    queryKey: ['due-service-order-installments', limit],
+    queryFn: () => serviceOrdersApi.dueInstallments(limit),
+    enabled: limit > 0,
   });
 }

@@ -31,8 +31,10 @@ function renderWithClient(ui: React.ReactElement) {
 const baseServiceOrder: ServiceOrderResponse = {
   id: 'so-1',
   tenantId: 't1',
+  orderNumber: 1,
   customerId: 'c1',
   customerName: 'João da Silva',
+  customerPhone: '11999999999',
   vehicleId: 'v1',
   vehicleBrand: 'Fiat',
   vehicleModel: 'Uno',
@@ -128,7 +130,7 @@ describe('ServiceOrderItemsSection', () => {
     const [editButton] = screen.getAllByRole('button', { name: /editar/i });
     await user.click(editButton);
 
-    const quantityInput = screen.getByLabelText('Quantidade');
+    const quantityInput = screen.getAllByLabelText('Quantidade').find((input) => input.getAttribute('value') === '2')!;
     await user.clear(quantityInput);
     await user.type(quantityInput, '3');
     await user.click(screen.getByRole('button', { name: /salvar/i }));
@@ -142,7 +144,7 @@ describe('ServiceOrderItemsSection', () => {
         unitPriceCents: 5000,
       }),
     );
-    await waitFor(() => expect(screen.queryByLabelText('Quantidade')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByLabelText('Quantidade')).toHaveLength(1));
   });
 
   it('cancelling an edit discards changes without calling the update mutation', async () => {
@@ -154,7 +156,7 @@ describe('ServiceOrderItemsSection', () => {
     await user.click(screen.getByRole('button', { name: /cancelar/i }));
 
     expect(serviceOrderItemsApi.update).not.toHaveBeenCalled();
-    expect(screen.queryByLabelText('Quantidade')).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText('Quantidade')).toHaveLength(1);
   });
 
   it('removing an item calls the delete mutation', async () => {

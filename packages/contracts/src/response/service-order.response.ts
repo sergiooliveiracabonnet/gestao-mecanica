@@ -1,10 +1,13 @@
 import type { ServiceOrderItemResponse } from './service-order-item.response';
+import type { PaymentMethod, PaymentStatus, ServiceOrderReceiptResponse } from './service-order-receipt.response';
+import type { ServiceOrderInstallmentResponse } from './service-order-installment.response';
 
 // Ordem dos estados reflete a máquina de estados da spec — ver
 // SERVICE_ORDER_TRANSITIONS no backend (service-order-state-machine.ts) e a
 // cópia usada só pra UX no frontend (state-machine.ts).
 export const SERVICE_ORDER_STATUSES = [
   'OPEN',
+  'AWAITING_APPROVAL',
   'IN_PROGRESS',
   'WAITING_PARTS',
   'COMPLETED',
@@ -25,9 +28,11 @@ export interface ServiceOrderStatusHistoryItemResponse {
 export interface ServiceOrderResponse {
   id: string;
   tenantId: string;
+  orderNumber: number;
   customerId: string;
   // Denormalizado pelo Manager, mesmo padrão de VehicleResponse.customerName.
   customerName: string;
+  customerPhone: string;
   vehicleId: string;
   vehicleBrand: string;
   vehicleModel: string;
@@ -35,6 +40,15 @@ export interface ServiceOrderResponse {
   status: ServiceOrderStatus;
   checklist?: Record<string, unknown>;
   diagnosis?: string;
+  entryMileage?: number;
+  customerComplaint?: string;
+  receptionNotes?: string;
+  recommendedService?: string;
+  expectedDeliveryAt?: string;
+  paymentMethod?: PaymentMethod;
+  paymentInstallments?: number;
+  paymentAnticipated?: boolean;
+  paymentFirstDueAt?: string;
   technicianId?: string;
   technicianName?: string;
   openedAt: string;
@@ -48,6 +62,11 @@ export interface ServiceOrderResponse {
   // mesmo padrão de `statusHistory`.
   totalAmountCents: number;
   items?: ServiceOrderItemResponse[];
+  receipts?: ServiceOrderReceiptResponse[];
+  installments?: ServiceOrderInstallmentResponse[];
+  receivedAmountCents: number;
+  outstandingAmountCents: number;
+  paymentStatus: PaymentStatus;
 }
 
 export type ServiceOrderListItemResponse = ServiceOrderResponse;

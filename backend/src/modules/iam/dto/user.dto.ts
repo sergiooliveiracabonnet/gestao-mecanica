@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, Max, Min, MinLength, ValidateNested } from 'class-validator';
+import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsUUID, Max, Min, MinLength, ValidateNested } from 'class-validator';
 import { INVITABLE_ROLES, MIN_PASSWORD_LENGTH, USER_ROLES, USER_STATUSES } from '@oficina/contracts';
 import type { AcceptInviteRequest, InviteUserRequest, UserListFilters, UserListRequest } from '@oficina/contracts';
 
@@ -24,6 +24,11 @@ export class AcceptInviteDto implements AcceptInviteRequest {
 
   @MinLength(MIN_PASSWORD_LENGTH, { message: `password must be at least ${MIN_PASSWORD_LENGTH} characters` })
   password!: string;
+}
+
+export class ManageUserAccessDto {
+  @IsUUID()
+  id!: string;
 }
 
 class UserListFiltersDto implements UserListFilters {

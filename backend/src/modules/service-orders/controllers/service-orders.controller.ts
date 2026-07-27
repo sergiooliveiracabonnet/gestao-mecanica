@@ -1,7 +1,8 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
-import type { PaginationData, ServiceOrderItemResponse, ServiceOrderListItemResponse, ServiceOrderResponse } from '@oficina/contracts';
+import type { DashboardBusinessSummaryResponse, DueServiceOrderInstallmentsResponse, PaginationData, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListItemResponse, ServiceOrderReceiptResponse, ServiceOrderResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
+import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { ServiceOrderManager } from '../managers/service-order.manager';
 import {
@@ -13,6 +14,8 @@ import {
   UpdateServiceOrderDto,
 } from '../dto/service-order.dto';
 import { CreateServiceOrderItemDto, DeleteServiceOrderItemDto, UpdateServiceOrderItemDto } from '../dto/service-order-item.dto';
+import { ConfirmServiceOrderReceiptDto, DeleteServiceOrderReceiptDto } from '../dto/service-order-receipt.dto';
+import { ConfigureServiceOrderPaymentDto, ConfirmServiceOrderInstallmentDto, ListDueServiceOrderInstallmentsDto } from '../dto/service-order-installment.dto';
 
 // Todos os 4 papéis têm acesso total a todo endpoint — divergência
 // deliberada do padrão de Clientes/Veículos (spec: "todos os papéis fazem
@@ -29,12 +32,14 @@ export class ServiceOrdersController {
   constructor(private readonly serviceOrderManager: ServiceOrderManager) {}
 
   @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
   @Post('service-orders')
   async create(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
     return this.serviceOrderManager.create(actingUser, body);
   }
 
   @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/update')
   async update(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UpdateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -42,6 +47,7 @@ export class ServiceOrdersController {
   }
 
   @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/transition')
   async transition(
@@ -52,6 +58,7 @@ export class ServiceOrdersController {
   }
 
   @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/delete')
   async delete(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -59,25 +66,36 @@ export class ServiceOrdersController {
   }
 
   @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
   @Get('service-order')
   async get(@Query() query: GetServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
     return this.serviceOrderManager.getById(query.id);
   }
 
   @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/list')
   async list(@Body() body: ServiceOrderListDto): Promise<PaginationData<ServiceOrderListItemResponse>> {
     return this.serviceOrderManager.list(body);
   }
 
+  @Roles(...ALL_ROLES)
+  @Permissions('finance.view')
+  @Get('dashboard/business-summary')
+  async businessSummary(): Promise<DashboardBusinessSummaryResponse> {
+    return this.serviceOrderManager.businessSummary();
+  }
+
   @Roles(...ITEM_ROLES)
+  @Permissions('service_orders.prices')
   @Post('service-orders/items')
   async addItem(@Body() body: CreateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
     return this.serviceOrderManager.addItem(body);
   }
 
   @Roles(...ITEM_ROLES)
+  @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/items/update')
   async updateItem(@Body() body: UpdateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
@@ -85,9 +103,49 @@ export class ServiceOrdersController {
   }
 
   @Roles(...ITEM_ROLES)
+  @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/items/delete')
   async deleteItem(@Body() body: DeleteServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
     return this.serviceOrderManager.deleteItem(body.id);
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('receipts.manage')
+  @Post('service-orders/receipts')
+  async confirmReceipt(@CurrentUser() user: AuthenticatedUser, @Body() body: ConfirmServiceOrderReceiptDto): Promise<{ receipt: ServiceOrderReceiptResponse }> {
+    return this.serviceOrderManager.confirmReceipt(user, body);
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('receipts.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/receipts/delete')
+  async deleteReceipt(@CurrentUser() user: AuthenticatedUser, @Body() body: DeleteServiceOrderReceiptDto): Promise<{ success: true }> {
+    return this.serviceOrderManager.deleteReceipt(user, body);
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('receipts.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/payment/configure')
+  async configurePayment(@CurrentUser() user: AuthenticatedUser, @Body() body: ConfigureServiceOrderPaymentDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
+    return this.serviceOrderManager.configurePayment(user, body);
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('receipts.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/installments/confirm')
+  async confirmInstallment(@CurrentUser() user: AuthenticatedUser, @Body() body: ConfirmServiceOrderInstallmentDto): Promise<{ installment: ServiceOrderInstallmentResponse }> {
+    return this.serviceOrderManager.confirmInstallment(user, body);
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('receipts.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/installments/due')
+  async dueInstallments(@Body() body: ListDueServiceOrderInstallmentsDto): Promise<DueServiceOrderInstallmentsResponse> {
+    return this.serviceOrderManager.listDueInstallments(body.limit);
   }
 }

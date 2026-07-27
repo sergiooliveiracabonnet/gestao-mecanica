@@ -1,5 +1,5 @@
-import { IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
-import { SERVICE_ORDER_STATUSES } from '@oficina/contracts';
+import { IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { PAYMENT_METHODS, SERVICE_ORDER_STATUSES } from '@oficina/contracts';
 import type {
   CreateServiceOrderRequest,
   DeleteServiceOrderRequest,
@@ -26,6 +26,14 @@ export class CreateServiceOrderDto implements CreateServiceOrderRequest {
   @IsOptional()
   @IsString()
   diagnosis?: string;
+
+  @IsOptional() @IsInt() @Min(0) entryMileage?: number | null;
+  @IsOptional() @IsString() customerComplaint?: string | null;
+  @IsOptional() @IsString() receptionNotes?: string | null;
+  @IsOptional() @IsString() recommendedService?: string | null;
+  @IsOptional() @IsISO8601() expectedDeliveryAt?: string | null;
+  @IsOptional() @IsIn(PAYMENT_METHODS) paymentMethod?: CreateServiceOrderRequest['paymentMethod'];
+  @IsOptional() @IsInt() @Min(1) @Max(24) paymentInstallments?: number | null;
 }
 
 export class UpdateServiceOrderDto implements UpdateServiceOrderRequest {
@@ -44,6 +52,14 @@ export class UpdateServiceOrderDto implements UpdateServiceOrderRequest {
   @IsOptional()
   @IsString()
   diagnosis?: string;
+
+  @IsOptional() @IsInt() @Min(0) entryMileage?: number | null;
+  @IsOptional() @IsString() customerComplaint?: string | null;
+  @IsOptional() @IsString() receptionNotes?: string | null;
+  @IsOptional() @IsString() recommendedService?: string | null;
+  @IsOptional() @IsISO8601() expectedDeliveryAt?: string | null;
+  @IsOptional() @IsIn(PAYMENT_METHODS) paymentMethod?: UpdateServiceOrderRequest['paymentMethod'];
+  @IsOptional() @IsInt() @Min(1) @Max(24) paymentInstallments?: number | null;
 }
 
 export class TransitionServiceOrderDto implements TransitionServiceOrderRequest {

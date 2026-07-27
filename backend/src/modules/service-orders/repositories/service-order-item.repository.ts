@@ -86,4 +86,18 @@ export class ServiceOrderItemRepository {
     }
     return totals;
   }
+
+  async financialItemsByServiceOrderIds(serviceOrderIds: string[]) {
+    if (serviceOrderIds.length === 0) return [];
+    const items = await this.prisma.client.serviceOrderItem.findMany({
+      where: { serviceOrderId: { in: serviceOrderIds }, deletedAt: null },
+      select: { serviceOrderId: true, type: true, description: true, quantity: true, unitPriceCents: true },
+    });
+    return items.map((item) => ({
+      serviceOrderId: item.serviceOrderId,
+      type: item.type,
+      description: item.description,
+      lineTotalCents: Math.round(item.quantity.toNumber() * item.unitPriceCents),
+    }));
+  }
 }

@@ -8,6 +8,13 @@ import type {
   ServiceOrderResponse,
   TransitionServiceOrderRequest,
   UpdateServiceOrderRequest,
+  ConfirmServiceOrderReceiptRequest,
+  DeleteServiceOrderReceiptRequest,
+  ServiceOrderReceiptResponse,
+  ConfigureServiceOrderPaymentRequest,
+  ConfirmServiceOrderInstallmentRequest,
+  DueServiceOrderInstallmentsResponse,
+  ServiceOrderInstallmentResponse,
 } from '@oficina/contracts';
 
 export const serviceOrdersApi = {
@@ -39,5 +46,20 @@ export const serviceOrdersApi = {
   async list(request: ServiceOrderListRequest): Promise<PaginationData<ServiceOrderListItemResponse>> {
     const response = await apiClient.post<PaginationData<ServiceOrderListItemResponse>>('/api/v1/service-orders/list', request);
     return response.data;
+  },
+  async confirmReceipt(request: ConfirmServiceOrderReceiptRequest): Promise<{ receipt: ServiceOrderReceiptResponse }> {
+    return (await apiClient.post('/api/v1/service-orders/receipts', request)).data;
+  },
+  async deleteReceipt(request: DeleteServiceOrderReceiptRequest): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/service-orders/receipts/delete', request)).data;
+  },
+  async configurePayment(request: ConfigureServiceOrderPaymentRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
+    return (await apiClient.post('/api/v1/service-orders/payment/configure', request)).data;
+  },
+  async confirmInstallment(request: ConfirmServiceOrderInstallmentRequest): Promise<{ installment: ServiceOrderInstallmentResponse }> {
+    return (await apiClient.post('/api/v1/service-orders/installments/confirm', request)).data;
+  },
+  async dueInstallments(limit = 20): Promise<DueServiceOrderInstallmentsResponse> {
+    return (await apiClient.post('/api/v1/service-orders/installments/due', { limit })).data;
   },
 };

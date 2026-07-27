@@ -13,6 +13,7 @@ interface ServiceOrdersTableProps {
   isError: boolean;
   onRetry: () => void;
   emptyMessage?: string;
+  canViewPrices?: boolean;
 }
 
 export function ServiceOrdersTable({
@@ -20,7 +21,8 @@ export function ServiceOrdersTable({
   isLoading,
   isError,
   onRetry,
-  emptyMessage = 'Nenhuma ordem de serviço ainda. Cadastre a primeira clicando em "Nova OS".',
+  emptyMessage = 'Nenhuma ordem de serviço ainda. Crie o primeiro atendimento para iniciar a operação.',
+  canViewPrices = true,
 }: ServiceOrdersTableProps) {
   if (isLoading) {
     return (
@@ -54,33 +56,35 @@ export function ServiceOrdersTable({
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
+            <TableHead>OS</TableHead>
             <TableHead>Veículo</TableHead>
             <TableHead>Cliente</TableHead>
             <TableHead>Técnico</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Abertura</TableHead>
-            <TableHead>Valor</TableHead>
+            <TableHead>Previsão de entrega</TableHead>
+            {canViewPrices && <TableHead>Pagamento</TableHead>}
+            {canViewPrices && <TableHead className="text-right">Valor</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {items.map((serviceOrder) => (
-            <TableRow key={serviceOrder.id} className="cursor-pointer">
-              <TableCell className="p-0">
-                <Link href={`/service-orders/${serviceOrder.id}`} className="block px-4 py-2 font-medium text-text">
-                  {serviceOrder.vehicleBrand} {serviceOrder.vehicleModel} · {serviceOrder.vehiclePlate}
-                </Link>
-              </TableCell>
-              <TableCell className="text-text-muted">{serviceOrder.customerName}</TableCell>
-              <TableCell className="text-text-muted">{serviceOrder.technicianName ?? '—'}</TableCell>
-              <TableCell>
-                <StatusBadge status={serviceOrder.status} />
-              </TableCell>
-              <TableCell className="text-text-muted">{new Date(serviceOrder.openedAt).toLocaleDateString('pt-BR')}</TableCell>
-              <TableCell className="font-medium text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</TableCell>
+            <TableRow key={serviceOrder.id}>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`} className="font-bold text-primary">#{serviceOrder.orderNumber}</LinkedCell>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`} className="min-w-48 font-medium text-text">{serviceOrder.vehicleBrand} {serviceOrder.vehicleModel}<span className="mt-0.5 block font-mono text-[11px] text-text-muted">{serviceOrder.vehiclePlate}</span></LinkedCell>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{serviceOrder.customerName}</LinkedCell>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{serviceOrder.technicianName ?? 'Sem técnico'}</LinkedCell>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`}><StatusBadge status={serviceOrder.status} /></LinkedCell>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`} className={serviceOrder.expectedDeliveryAt && new Date(serviceOrder.expectedDeliveryAt) < new Date() && !['DELIVERED', 'CANCELLED'].includes(serviceOrder.status) ? 'font-semibold text-danger' : undefined}>{serviceOrder.expectedDeliveryAt ? new Date(serviceOrder.expectedDeliveryAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Sem previsão'}</LinkedCell>
+              {canViewPrices && <LinkedCell href={`/service-orders/${serviceOrder.id}`}><span className={serviceOrder.paymentStatus === 'PAID' ? 'text-success' : 'text-warning'}>{serviceOrder.paymentStatus === 'PAID' ? 'Pago' : serviceOrder.paymentStatus === 'PARTIALLY_PAID' ? 'Parcial' : 'Pendente'}</span></LinkedCell>}
+              {canViewPrices && <LinkedCell href={`/service-orders/${serviceOrder.id}`} className="text-right font-semibold text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</LinkedCell>}
             </TableRow>
           ))}
         </TableBody>
       </Table>
     </div>
   );
+}
+
+function LinkedCell({ href, className = '', children }: { href: string; className?: string; children: React.ReactNode }) {
+  return <TableCell className="p-0"><Link href={href} className={`block min-h-12 px-4 py-3 text-text-muted outline-none hover:bg-muted/40 focus-visible:bg-selection focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${className}`}>{children}</Link></TableCell>;
 }

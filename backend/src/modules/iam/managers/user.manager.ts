@@ -6,6 +6,7 @@ import type {
   AuthResponse,
   InviteUserRequest,
   InviteUserResponse,
+  ManageUserAccessRequest,
   PaginationData,
   UserListItemResponse,
   UserListRequest,
@@ -110,10 +111,13 @@ export class UserManager {
       throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel do usuário não encontrado.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    const permissions = await (this.roleRepository.permissionKeys?.(role.id) ?? Promise.resolve([])) as import('@oficina/contracts').PermissionKey[];
     const accessToken = await this.tokenService.signAccessToken({
       userId: user.id,
       tenantId: user.tenantId,
-      role: role.name as UserRole,
+      role: (role.baseRole ?? role.name) as UserRole,
+      roleId: role.id,
+      permissions,
     });
     const opaque = this.tokenService.generateRefreshToken();
 
@@ -129,12 +133,12 @@ export class UserManager {
     return {
       accessToken,
       refreshToken: opaque.token,
-      user: this.toUserResponse({ ...user, status: 'active' }, role),
+      user: this.toUserResponse({ ...user, status: 'active' }, role, permissions),
     };
   }
 
-  async list(request: UserListRequest): Promise<PaginationData<UserListItemResponse>> {
-    const roles = await this.roleRepository.all();
+  async list(request: UserListRequest, actingUser?: AuthenticatedUser): Promise<PaginationData<UserListItemResponse>> {
+    const roles = actingUser ? await this.roleRepository.listForTenant(actingUser.tenantId) : await this.roleRepository.all();
     const roleByName = new Map(roles.map((role) => [role.name, role]));
     const roleFilterId = request.filters?.role ? roleByName.get(request.filters.role)?.id : undefined;
 
@@ -164,13 +168,41 @@ export class UserManager {
     };
   }
 
-  private toUserResponse(user: UserEntity, role: RoleEntity): UserListItemResponse {
+  async disable(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ success: true }> {
+    const user = await this.getManageableUser(actingUser, request.id);
+    await this.userRepository.disableAndRevokeSessions(user.id);
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.disabled', entity: 'user', entityId: user.id, metadata: {} });
+    return { success: true };
+  }
+
+  async delete(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ success: true }> {
+    const user = await this.getManageableUser(actingUser, request.id);
+    await this.userRepository.softDeleteAndRevokeSessions(user.id);
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.deleted', entity: 'user', entityId: user.id, metadata: {} });
+    return { success: true };
+  }
+
+  private async getManageableUser(actingUser: AuthenticatedUser, id: string): Promise<UserEntity> {
+    if (id === actingUser.userId) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Você não pode bloquear ou excluir sua própria conta.', HttpStatus.BAD_REQUEST);
+    }
+    const user = await this.userRepository.byId(id);
+    if (!user || user.tenantId !== actingUser.tenantId) {
+      throw new AppException(AppErrorCode.USER_NOT_FOUND, 'Funcionário não encontrado.', HttpStatus.NOT_FOUND);
+    }
+    return user;
+  }
+
+  private toUserResponse(user: UserEntity, role: RoleEntity, permissions: import('@oficina/contracts').PermissionKey[] = []): UserListItemResponse {
     return {
       id: user.id,
       tenantId: user.tenantId,
       email: user.email,
       name: user.name,
-      role: role.name as UserRole,
+      role: (role.baseRole ?? role.name) as UserRole,
+      profileId: role.id,
+      profileName: role.name,
+      permissions,
       status: user.status as UserListItemResponse['status'],
       createdAt: user.createdAt.toISOString(),
     };

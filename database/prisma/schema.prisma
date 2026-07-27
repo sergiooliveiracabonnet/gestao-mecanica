@@ -28,14 +28,38 @@ datasource db {
 // ambíguo. Uma pessoa que trabalha em duas oficinas precisa de e-mails
 // diferentes nesta versão do produto.
 model Tenant {
-  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name      String
-  document  String
-  plan      String    @default("free")
-  status    String    @default("active")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                String
+  legalName           String?   @map("legal_name")
+  document            String
+  stateRegistration   String?   @map("state_registration")
+  phone               String?
+  whatsapp            String?
+  email               String?
+  website             String?
+  addressStreet       String?   @map("address_street")
+  addressNumber       String?   @map("address_number")
+  addressComplement   String?   @map("address_complement")
+  addressDistrict     String?   @map("address_district")
+  addressCity         String?   @map("address_city")
+  addressState        String?   @map("address_state")
+  addressPostalCode   String?   @map("address_postal_code")
+  logoDataUrl         String?   @map("logo_data_url")
+  documentFooter      String?   @map("document_footer")
+  smtpHost            String?   @map("smtp_host")
+  smtpPort            Int       @default(587) @map("smtp_port")
+  smtpSecure          Boolean   @default(false) @map("smtp_secure")
+  smtpUsername        String?   @map("smtp_username")
+  smtpPassword        String?   @map("smtp_password")
+  smtpFromName        String?   @map("smtp_from_name")
+  smtpFromEmail       String?   @map("smtp_from_email")
+  smtpReplyTo         String?   @map("smtp_reply_to")
+  smtpEnabled         Boolean   @default(false) @map("smtp_enabled")
+  plan                String    @default("free")
+  status              String    @default("active")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz
 
   @@map("tenants")
 }
@@ -76,10 +100,17 @@ model RefreshToken {
 }
 
 model Role {
-  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  name      String   @unique
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId    String?   @map("tenant_id") @db.Uuid
+  name        String
+  description String?
+  baseRole    String    @default("ADMIN") @map("base_role")
+  isSystem    Boolean   @default(false) @map("is_system")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
 
+  @@index([tenantId])
   @@map("roles")
 }
 
@@ -92,11 +123,14 @@ model Permission {
 }
 
 model RolePermission {
-  id           String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  roleId       String @map("role_id") @db.Uuid
-  permissionId String @map("permission_id") @db.Uuid
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  roleId       String    @map("role_id") @db.Uuid
+  permissionId String    @map("permission_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
 
   @@unique([roleId, permissionId])
+  @@index([roleId])
   @@map("role_permissions")
 }
 
@@ -182,11 +216,21 @@ model Vehicle {
 model ServiceOrder {
   id            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   tenantId      String    @map("tenant_id") @db.Uuid
+  orderNumber   Int       @map("order_number")
   customerId    String    @map("customer_id") @db.Uuid
   vehicleId     String    @map("vehicle_id") @db.Uuid
   status        String
   checklist     Json?
   diagnosis     String?
+  entryMileage  Int?      @map("entry_mileage")
+  customerComplaint String? @map("customer_complaint")
+  receptionNotes String?  @map("reception_notes")
+  recommendedService String? @map("recommended_service")
+  expectedDeliveryAt DateTime? @map("expected_delivery_at") @db.Timestamptz
+  paymentMethod String? @map("payment_method")
+  paymentInstallments Int? @map("payment_installments")
+  paymentAnticipated Boolean @default(false) @map("payment_anticipated")
+  paymentFirstDueAt DateTime? @map("payment_first_due_at") @db.Timestamptz
   technicianId  String?   @map("technician_id") @db.Uuid
   openedAt      DateTime  @map("opened_at") @db.Timestamptz
   closedAt      DateTime? @map("closed_at") @db.Timestamptz
@@ -195,6 +239,7 @@ model ServiceOrder {
   deletedAt     DateTime? @map("deleted_at") @db.Timestamptz
 
   @@index([tenantId])
+  @@unique([tenantId, orderNumber])
   @@index([customerId])
   @@index([vehicleId])
   @@index([status])
@@ -302,4 +347,129 @@ model MaintenanceAlert {
   @@unique([vehicleId, referenceDate])
   @@index([tenantId, status])
   @@map("maintenance_alerts")
+}
+
+model ServiceOrderReceipt {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  serviceOrderId String    @map("service_order_id") @db.Uuid
+  method         String
+  amountCents    Int       @map("amount_cents")
+  receivedAt     DateTime  @map("received_at") @db.Timestamptz
+  confirmedBy    String    @map("confirmed_by") @db.Uuid
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId])
+  @@index([serviceOrderId])
+  @@index([tenantId, receivedAt])
+  @@map("service_order_receipts")
+}
+
+model ServiceOrderInstallment {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  serviceOrderId    String    @map("service_order_id") @db.Uuid
+  installmentNumber Int      @map("installment_number")
+  installmentCount Int       @map("installment_count")
+  amountCents       Int       @map("amount_cents")
+  dueAt             DateTime  @map("due_at") @db.Timestamptz
+  status            String    @default("PENDING")
+  paidAt            DateTime? @map("paid_at") @db.Timestamptz
+  receiptId         String?   @map("receipt_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt         DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, status, dueAt])
+  @@index([serviceOrderId])
+  @@map("service_order_installments")
+}
+
+model FinancialCategory {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  name      String
+  type      String
+  group     String    @default("Personalizadas")
+  color     String?
+  isSystem  Boolean   @default(false) @map("is_system")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, type])
+  @@map("financial_categories")
+}
+
+model FinancialEntry {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  categoryId  String    @map("category_id") @db.Uuid
+  supplierId  String?   @map("supplier_id") @db.Uuid
+  customerId  String?   @map("customer_id") @db.Uuid
+  type        String
+  description String
+  amountCents Int       @map("amount_cents")
+  dueAt       DateTime  @map("due_at") @db.Timestamptz
+  status      String    @default("PENDING")
+  paidAt      DateTime? @map("paid_at") @db.Timestamptz
+  notes       String?
+  createdBy   String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, dueAt])
+  @@index([tenantId, status, dueAt])
+  @@index([categoryId])
+  @@index([supplierId])
+  @@index([customerId])
+  @@map("financial_entries")
+}
+
+model Supplier {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  name         String
+  document     String?
+  contactName  String?   @map("contact_name")
+  phone        String?
+  email        String?
+  paymentTerms String?   @map("payment_terms")
+  notes        String?
+  status       String    @default("ACTIVE")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, name])
+  @@map("suppliers")
+}
+
+model Appointment {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  customerId         String    @map("customer_id") @db.Uuid
+  vehicleId          String    @map("vehicle_id") @db.Uuid
+  technicianId       String?   @map("technician_id") @db.Uuid
+  serviceOrderId     String?   @map("service_order_id") @db.Uuid
+  startsAt           DateTime  @map("starts_at") @db.Timestamptz
+  endsAt             DateTime  @map("ends_at") @db.Timestamptz
+  serviceDescription String    @map("service_description")
+  notes              String?
+  status             String    @default("SCHEDULED")
+  createdBy          String    @map("created_by") @db.Uuid
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, startsAt, endsAt])
+  @@index([tenantId, technicianId, startsAt, endsAt])
+  @@index([customerId])
+  @@index([vehicleId])
+  @@map("appointments")
 }

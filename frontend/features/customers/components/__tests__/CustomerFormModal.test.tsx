@@ -51,6 +51,22 @@ describe('CustomerFormModal', () => {
     expect(screen.getByRole('button', { name: /cadastrar cliente/i })).toBeInTheDocument();
   });
 
+  it('shows address as a separate step in the guided create flow', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} presentation="page" />);
+
+    expect(screen.getByText('Endereço')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^rua$/i)).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(/cpf ou cnpj/i), '11144477735');
+    await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
+    await user.type(screen.getByLabelText(/telefone/i), '11988887777');
+    await user.click(screen.getByRole('button', { name: /próximo/i }));
+
+    expect(screen.getByLabelText(/^rua$/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^nome$/i)).not.toBeInTheDocument();
+  });
+
   it('hides type/document fields in edit mode', () => {
     renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
 
@@ -206,8 +222,10 @@ describe('CustomerFormModal', () => {
         {
           id: 'so-1',
           tenantId: 't1',
+          orderNumber: 1,
           customerId: 'c1',
           customerName: 'João da Silva',
+          customerPhone: '11999999999',
           vehicleId: 'v1',
           vehicleBrand: 'Fiat',
           vehicleModel: 'Uno',
@@ -236,8 +254,10 @@ describe('CustomerFormModal', () => {
     const soItem = (id: string) => ({
       id,
       tenantId: 't1',
+      orderNumber: 2,
       customerId: 'c1',
       customerName: 'João da Silva',
+      customerPhone: '11999999999',
       vehicleId: 'v1',
       vehicleBrand: 'Fiat',
       vehicleModel: 'Uno',

@@ -77,7 +77,8 @@ const EMPTY_VALUES: CustomerFormValues = {
 };
 
 const GUIDED_STEPS = [
-  { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'address'] },
+  { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'] },
+  { id: 'address', label: 'Endereço', fields: ['address'] },
   { id: 'contact', label: 'Contato', fields: ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'] },
   { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime'] },
   { id: 'notes', label: 'Observações', fields: ['notes'] },
@@ -187,8 +188,10 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
 
   function onInvalid(errors: FieldErrors<CustomerFormValues>) {
     const firstPath = Object.keys(errors)[0] ?? '';
-    if (firstPath.startsWith('address.') || ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'].includes(firstPath)) {
+    if (['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'].includes(firstPath)) {
       setActiveTab('general');
+    } else if (firstPath.startsWith('address.')) {
+      setActiveTab('address');
     } else if (firstPath.startsWith('secondaryContact')) {
       setActiveTab('contact');
     } else if (firstPath.startsWith('preferredContact')) {
@@ -230,7 +233,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
           <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
             {isGuidedCreate ? (
               <div className="flex flex-col gap-5">
-                <ol aria-label="Etapas do cadastro do cliente" className="grid gap-2 sm:grid-cols-4">
+                <ol aria-label="Etapas do cadastro do cliente" className="grid gap-2 sm:grid-cols-5">
                   {GUIDED_STEPS.map((item, index) => {
                     const currentIndex = GUIDED_STEPS.findIndex((stepItem) => stepItem.id === activeTab);
                     const complete = index < currentIndex;
@@ -238,7 +241,8 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
                     return <li key={item.id} className={`flex items-center gap-2 rounded-button border px-3 py-2 text-xs font-semibold ${active ? 'border-primary/40 bg-primary-subtle text-primary-strong' : complete ? 'border-success/30 bg-success-subtle text-success-strong' : 'border-border bg-surface text-text-muted'}`} aria-current={active ? 'step' : undefined}><span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${active ? 'bg-primary text-primary-foreground' : complete ? 'bg-success text-white' : 'bg-muted text-text-muted'}`}>{complete ? <Check className="size-3.5" aria-hidden="true" /> : index + 1}</span>{item.label}</li>;
                   })}
                 </ol>
-                {activeTab === 'general' && <CustomerGeneralTab form={form} isEditing={false} />}
+                {activeTab === 'general' && <CustomerGeneralTab form={form} isEditing={false} showAddress={false} />}
+                {activeTab === 'address' && <CustomerGeneralTab form={form} isEditing={false} addressOnly />}
                 {activeTab === 'contact' && <CustomerContactTab form={form} />}
                 {activeTab === 'preferences' && <CustomerPreferencesTab form={form} />}
                 {activeTab === 'notes' && <CustomerNotesTab form={form} />}

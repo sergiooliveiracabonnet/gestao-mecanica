@@ -7,8 +7,10 @@ import { ServiceOrdersTable } from '../ServiceOrdersTable';
 const serviceOrder: ServiceOrderListItemResponse = {
   id: 'so1',
   tenantId: 't1',
+  orderNumber: 1,
   customerId: 'c1',
   customerName: 'João da Silva',
+  customerPhone: '11999999999',
   vehicleId: 'v1',
   vehicleBrand: 'Fiat',
   vehicleModel: 'Uno',
@@ -19,6 +21,9 @@ const serviceOrder: ServiceOrderListItemResponse = {
   openedAt: '2026-01-01T00:00:00Z',
   createdAt: '2026-01-01T00:00:00Z',
   totalAmountCents: 15000,
+  receivedAmountCents: 0,
+  outstandingAmountCents: 15000,
+  paymentStatus: 'AWAITING_PAYMENT',
 };
 
 function noop() {}
@@ -47,9 +52,9 @@ describe('ServiceOrdersTable', () => {
   it('renders service order rows with vehicle, customer, technician fallback and status', () => {
     render(<ServiceOrdersTable items={[serviceOrder]} isLoading={false} isError={false} onRetry={noop} />);
 
-    expect(screen.getByText(/Fiat Uno · ABC1D23/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Fiat Uno ABC1D23/ })).toBeInTheDocument();
     expect(screen.getByText('João da Silva')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument();
+    expect(screen.getByText('Sem técnico')).toBeInTheDocument();
     expect(screen.getByText('Aberta')).toBeInTheDocument();
     expect(screen.getByText('R$ 150,00')).toBeInTheDocument();
   });
@@ -57,6 +62,6 @@ describe('ServiceOrdersTable', () => {
   it('links each row to its detail page', () => {
     render(<ServiceOrdersTable items={[serviceOrder]} isLoading={false} isError={false} onRetry={noop} />);
 
-    expect(screen.getByRole('link', { name: /Fiat Uno · ABC1D23/ })).toHaveAttribute('href', '/service-orders/so1');
+    expect(screen.getByRole('link', { name: /Fiat Uno ABC1D23/ })).toHaveAttribute('href', '/service-orders/so1');
   });
 });

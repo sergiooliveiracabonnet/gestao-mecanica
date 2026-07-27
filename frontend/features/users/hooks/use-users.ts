@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AcceptInviteRequest, InviteUserRequest, UserListRequest } from '@oficina/contracts';
+import type { AcceptInviteRequest, InviteUserRequest, ManageUserAccessRequest, UserListRequest } from '@oficina/contracts';
 import { useAuthStore } from '@/stores/auth-store';
 import { usersApi } from '../api/users-api';
 
@@ -36,3 +36,14 @@ export function useUsersList(request: UserListRequest) {
     placeholderData: (previousData) => previousData,
   });
 }
+
+function useUserAccessMutation(action: 'disable' | 'delete') {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: ManageUserAccessRequest) => usersApi[action](request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [USERS_LIST_KEY] }),
+  });
+}
+
+export function useDisableUser() { return useUserAccessMutation('disable'); }
+export function useDeleteUser() { return useUserAccessMutation('delete'); }

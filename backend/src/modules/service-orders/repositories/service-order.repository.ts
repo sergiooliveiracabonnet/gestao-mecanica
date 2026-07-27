@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '@oficina/database';
 import type { ServiceOrderStatus } from '@oficina/contracts';
+import type { PaymentMethod } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateServiceOrderInput {
@@ -13,6 +14,13 @@ export interface CreateServiceOrderInput {
   technicianId?: string;
   checklist?: Record<string, unknown>;
   diagnosis?: string;
+  entryMileage?: number | null;
+  customerComplaint?: string | null;
+  receptionNotes?: string | null;
+  recommendedService?: string | null;
+  expectedDeliveryAt?: Date | null;
+  paymentMethod?: PaymentMethod | null;
+  paymentInstallments?: number | null;
   openedAt: Date;
 }
 
@@ -20,6 +28,13 @@ export interface UpdateServiceOrderInput {
   technicianId?: string;
   checklist?: Record<string, unknown>;
   diagnosis?: string;
+  entryMileage?: number | null;
+  customerComplaint?: string | null;
+  receptionNotes?: string | null;
+  recommendedService?: string | null;
+  expectedDeliveryAt?: Date | null;
+  paymentMethod?: PaymentMethod | null;
+  paymentInstallments?: number | null;
 }
 
 @Injectable()
@@ -31,6 +46,11 @@ export class ServiceOrderRepository {
   // tenant_id automaticamente (ver TENANT_SCOPED_MODELS).
   async insert(input: CreateServiceOrderInput, tx?: PrismaClient) {
     const db = tx ?? this.prisma.client;
+    // Serializa a alocação por tenant dentro da transação, evitando números
+    // duplicados quando duas OS são abertas simultaneamente.
+    await db.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.tenantId}))`;
+    const latest = await db.serviceOrder.aggregate({ where: { tenantId: input.tenantId }, _max: { orderNumber: true } });
+    const orderNumber = (latest._max.orderNumber ?? 0) + 1;
     return db.serviceOrder.create({
       data: {
         tenantId: input.tenantId,
@@ -39,6 +59,14 @@ export class ServiceOrderRepository {
         technicianId: input.technicianId,
         checklist: input.checklist as Prisma.InputJsonValue | undefined,
         diagnosis: input.diagnosis,
+        orderNumber,
+        entryMileage: input.entryMileage,
+        customerComplaint: input.customerComplaint,
+        receptionNotes: input.receptionNotes,
+        recommendedService: input.recommendedService,
+        expectedDeliveryAt: input.expectedDeliveryAt,
+        paymentMethod: input.paymentMethod,
+        paymentInstallments: input.paymentInstallments,
         status: 'OPEN',
         openedAt: input.openedAt,
       },
@@ -118,5 +146,18 @@ export class ServiceOrderRepository {
     ]);
 
     return { items, total };
+  }
+
+  async listForBusinessSummary(since: Date) {
+    return this.prisma.client.serviceOrder.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { status: { in: ['OPEN', 'AWAITING_APPROVAL', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED'] } },
+          { status: 'DELIVERED', closedAt: { gte: since } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

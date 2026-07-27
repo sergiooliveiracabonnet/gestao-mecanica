@@ -1,13 +1,14 @@
 'use client';
 
-import type { UserListItemResponse } from '@oficina/contracts';
+import type { AccessProfileResponse, UserListItemResponse } from '@oficina/contracts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Admin',
-  MANAGER: 'Gerente',
+  MANAGER: 'Gestor',
   MECHANIC: 'Mecânico',
   FRONT_DESK: 'Recepção',
 };
@@ -29,9 +30,15 @@ interface UsersTableProps {
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
+  profiles?: AccessProfileResponse[];
+  onAssignProfile?: (userId: string, profileId: string) => void;
+  currentUserId?: string;
+  canManage?: boolean;
+  onDisable?: (user: UserListItemResponse) => void;
+  onDelete?: (user: UserListItemResponse) => void;
 }
 
-export function UsersTable({ items, isLoading, isError, onRetry }: UsersTableProps) {
+export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], onAssignProfile, currentUserId, canManage, onDisable, onDelete }: UsersTableProps) {
   if (isLoading) {
     return (
       <div role="status" aria-label="Carregando usuários" className="space-y-2">
@@ -69,7 +76,9 @@ export function UsersTable({ items, isLoading, isError, onRetry }: UsersTablePro
             <TableHead>Nome</TableHead>
             <TableHead>E-mail</TableHead>
             <TableHead>Papel</TableHead>
+            {profiles.length > 0 && <TableHead>Perfil de acesso</TableHead>}
             <TableHead>Status</TableHead>
+            {canManage && <TableHead className="text-right">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -78,11 +87,23 @@ export function UsersTable({ items, isLoading, isError, onRetry }: UsersTablePro
               <TableCell className="font-medium text-text">{user.name}</TableCell>
               <TableCell className="text-text-muted">{user.email}</TableCell>
               <TableCell>{ROLE_LABELS[user.role] ?? user.role}</TableCell>
+              {profiles.length > 0 && <TableCell className="min-w-52">
+                <Select value={user.profileId} onValueChange={(profileId) => onAssignProfile?.(user.id, profileId)}>
+                  <SelectTrigger aria-label={`Perfil de ${user.name}`}><SelectValue placeholder="Selecionar perfil" /></SelectTrigger>
+                  <SelectContent>{profiles.map((profile) => <SelectItem key={profile.id} value={profile.id}>{profile.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </TableCell>}
               <TableCell>
                 <Badge variant="outline" className={STATUS_STYLES[user.status]}>
                   {STATUS_LABELS[user.status] ?? user.status}
                 </Badge>
               </TableCell>
+              {canManage && <TableCell className="text-right">
+                {user.id !== currentUserId && <div className="flex justify-end gap-2">
+                  {user.status !== 'disabled' && <Button variant="outline" size="sm" onClick={() => onDisable?.(user)}>Bloquear</Button>}
+                  <Button variant="outline" size="sm" className="border-danger/30 text-danger hover:bg-danger/10" onClick={() => onDelete?.(user)}>Excluir</Button>
+                </div>}
+              </TableCell>}
             </TableRow>
           ))}
         </TableBody>

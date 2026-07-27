@@ -14,13 +14,17 @@ const TYPE_OPTIONS: Array<{ value: CustomerFormValues['type']; label: string }> 
 interface CustomerGeneralTabProps {
   form: UseFormReturn<CustomerFormValues>;
   isEditing: boolean;
+  showAddress?: boolean;
+  addressOnly?: boolean;
 }
 
-export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps) {
+export function CustomerGeneralTab({ form, isEditing, showAddress = true, addressOnly = false }: CustomerGeneralTabProps) {
   const type = form.watch('type');
 
   return (
     <div className="flex flex-col gap-4">
+      {!addressOnly && (
+        <>
       {!isEditing && (
         <>
           <FormField
@@ -135,7 +139,10 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
           )}
         />
       )}
+        </>
+      )}
 
+      {showAddress && (
       <fieldset className="flex flex-col gap-4 rounded-card border border-border p-4">
         <legend className="px-1 text-sm font-medium text-text">Endereço (opcional)</legend>
         <div className="grid grid-cols-3 gap-4">
@@ -236,6 +243,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
           )}
         />
       </fieldset>
+      )}
     </div>
   );
 }

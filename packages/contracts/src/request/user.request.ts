@@ -12,6 +12,10 @@ export interface AcceptInviteRequest {
   password: string;
 }
 
+export interface ManageUserAccessRequest {
+  id: string;
+}
+
 export interface UserListFilters {
   status?: UserStatus;
   role?: UserRole;

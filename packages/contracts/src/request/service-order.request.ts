@@ -1,11 +1,19 @@
 import type { PageableRequest } from '../response/pagination.response';
 import type { ServiceOrderStatus } from '../response/service-order.response';
+import type { PaymentMethod } from '../response/service-order-receipt.response';
 
 export interface CreateServiceOrderRequest {
   vehicleId: string;
   technicianId?: string;
   checklist?: Record<string, unknown>;
   diagnosis?: string;
+  entryMileage?: number | null;
+  customerComplaint?: string | null;
+  receptionNotes?: string | null;
+  recommendedService?: string | null;
+  expectedDeliveryAt?: string | null;
+  paymentMethod?: PaymentMethod | null;
+  paymentInstallments?: number | null;
 }
 
 export interface UpdateServiceOrderRequest {
@@ -13,6 +21,13 @@ export interface UpdateServiceOrderRequest {
   technicianId?: string;
   checklist?: Record<string, unknown>;
   diagnosis?: string;
+  entryMileage?: number | null;
+  customerComplaint?: string | null;
+  receptionNotes?: string | null;
+  recommendedService?: string | null;
+  expectedDeliveryAt?: string | null;
+  paymentMethod?: PaymentMethod | null;
+  paymentInstallments?: number | null;
 }
 
 export interface TransitionServiceOrderRequest {

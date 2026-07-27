@@ -23,10 +23,11 @@ function renderWithClient(ui: React.ReactElement) {
 
 describe('StatusTransitionButtons', () => {
   it.each([
-    ['OPEN', ['Em andamento', 'Cancelada']],
-    ['IN_PROGRESS', ['Aguardando peças', 'Concluída', 'Cancelada']],
-    ['WAITING_PARTS', ['Em andamento', 'Cancelada']],
-    ['COMPLETED', ['Entregue']],
+    ['OPEN', ['Enviar para aprovação', 'Iniciar serviço', 'Cancelar OS']],
+    ['AWAITING_APPROVAL', ['Iniciar serviço', 'Cancelar OS']],
+    ['IN_PROGRESS', ['Aguardar peças', 'Marcar como concluída', 'Cancelar OS']],
+    ['WAITING_PARTS', ['Iniciar serviço', 'Cancelar OS']],
+    ['COMPLETED', ['Registrar entrega']],
   ] as Array<[ServiceOrderStatus, string[]]>)('renders exactly the valid transitions for %s', (status, expectedLabels) => {
     renderWithClient(<StatusTransitionButtons serviceOrderId="so1" status={status} />);
 
@@ -48,7 +49,7 @@ describe('StatusTransitionButtons', () => {
     const user = userEvent.setup();
     renderWithClient(<StatusTransitionButtons serviceOrderId="so1" status="OPEN" />);
 
-    await user.click(screen.getByRole('button', { name: 'Em andamento' }));
+    await user.click(screen.getByRole('button', { name: 'Iniciar serviço' }));
 
     expect(serviceOrdersApi.transition).toHaveBeenCalledWith({ id: 'so1', toStatus: 'IN_PROGRESS' });
   });

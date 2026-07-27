@@ -14,6 +14,8 @@ function buildManager() {
     byEmail: jest.fn(),
     byInviteTokenHash: jest.fn(),
     update: jest.fn(),
+    disableAndRevokeSessions: jest.fn(),
+    softDeleteAndRevokeSessions: jest.fn(),
     listByTenant: jest.fn(),
   };
   const roleRepository = {
@@ -73,6 +75,35 @@ const invitedUser = {
 };
 
 describe('UserManager', () => {
+  describe('employee access management', () => {
+    it('blocks a user from the same tenant and revokes sessions', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, status: 'active' });
+
+      await deps.manager.disable(actingAdmin, { id: invitedUser.id });
+
+      expect(deps.userRepository.disableAndRevokeSessions).toHaveBeenCalledWith(invitedUser.id);
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'user.disabled' }));
+    });
+
+    it('soft-deletes a user from the same tenant and revokes sessions', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, status: 'active' });
+
+      await deps.manager.delete(actingAdmin, { id: invitedUser.id });
+
+      expect(deps.userRepository.softDeleteAndRevokeSessions).toHaveBeenCalledWith(invitedUser.id);
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'user.deleted' }));
+    });
+
+    it('does not allow an administrator to block their own account', async () => {
+      const deps = buildManager();
+      await expect(deps.manager.disable(actingAdmin, { id: actingAdmin.userId })).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+      });
+    });
+  });
+
   describe('invite', () => {
     it('creates an invited user and returns an invite link', async () => {
       const deps = buildManager();

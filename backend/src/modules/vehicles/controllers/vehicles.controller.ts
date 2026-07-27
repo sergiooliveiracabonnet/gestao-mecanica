@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestj
 import type { PaginationData, VehicleListItemResponse, VehicleResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
+import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { VehicleManager } from '../managers/vehicle.manager';
 import { CreateVehicleDto, DeleteVehicleDto, GetVehicleDto, UpdateVehicleDto, VehicleListDto } from '../dto/vehicle.dto';
@@ -14,12 +15,14 @@ export class VehiclesController {
   constructor(private readonly vehicleManager: VehicleManager) {}
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
+  @Permissions('vehicles.manage')
   @Post('vehicles')
   async create(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateVehicleDto): Promise<{ vehicle: VehicleResponse }> {
     return this.vehicleManager.create(actingUser, body);
   }
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
+  @Permissions('vehicles.manage')
   @HttpCode(HttpStatus.OK)
   @Post('vehicles/update')
   async update(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UpdateVehicleDto): Promise<{ vehicle: VehicleResponse }> {
@@ -27,6 +30,7 @@ export class VehiclesController {
   }
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
+  @Permissions('vehicles.manage')
   @HttpCode(HttpStatus.OK)
   @Post('vehicles/delete')
   async delete(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteVehicleDto): Promise<{ vehicle: VehicleResponse }> {
@@ -34,12 +38,14 @@ export class VehiclesController {
   }
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
+  @Permissions('vehicles.view')
   @Get('vehicle')
   async get(@Query() query: GetVehicleDto): Promise<{ vehicle: VehicleResponse }> {
     return this.vehicleManager.getById(query.id);
   }
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
+  @Permissions('vehicles.view')
   @HttpCode(HttpStatus.OK)
   @Post('vehicles/list')
   async list(@Body() body: VehicleListDto): Promise<PaginationData<VehicleListItemResponse>> {

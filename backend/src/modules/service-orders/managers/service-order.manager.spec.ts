@@ -12,6 +12,7 @@ function buildManager() {
     transition: jest.fn(),
     softDelete: jest.fn(),
     listByTenant: jest.fn(),
+    listForBusinessSummary: jest.fn(),
   };
   const statusHistoryRepository = {
     insert: jest.fn(),
@@ -24,14 +25,23 @@ function buildManager() {
     update: jest.fn(),
     softDelete: jest.fn(),
     sumTotalsByServiceOrderIds: jest.fn().mockResolvedValue(new Map()),
+    financialItemsByServiceOrderIds: jest.fn().mockResolvedValue([]),
+  };
+  const receiptRepository = {
+    byServiceOrderId: jest.fn().mockResolvedValue([]),
+    byServiceOrderIds: jest.fn().mockResolvedValue([]),
+    receivedSince: jest.fn().mockResolvedValue([]),
+    insert: jest.fn(),
+    byId: jest.fn(),
+    softDelete: jest.fn(),
   };
   const vehicleRepository = {
     byId: jest.fn(),
-    byIds: jest.fn(),
+    byIds: jest.fn().mockResolvedValue([]),
   };
   const customerRepository = {
     byId: jest.fn(),
-    byIds: jest.fn(),
+    byIds: jest.fn().mockResolvedValue([]),
   };
   const userRepository = {
     byId: jest.fn(),
@@ -39,6 +49,14 @@ function buildManager() {
   };
   const prisma = {
     transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(FAKE_TX)),
+    client: {
+      serviceOrderInstallment: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findFirst: jest.fn(),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      serviceOrder: { findMany: jest.fn().mockResolvedValue([]) },
+    },
   };
   const auditLog = { record: jest.fn() };
   const maintenanceAlertRepository = { resolveOpenByVehicleId: jest.fn() };
@@ -47,6 +65,7 @@ function buildManager() {
     serviceOrderRepository as never,
     statusHistoryRepository as never,
     itemRepository as never,
+    receiptRepository as never,
     vehicleRepository as never,
     customerRepository as never,
     userRepository as never,
@@ -60,6 +79,7 @@ function buildManager() {
     serviceOrderRepository,
     statusHistoryRepository,
     itemRepository,
+    receiptRepository,
     vehicleRepository,
     customerRepository,
     userRepository,
@@ -233,6 +253,23 @@ describe('ServiceOrderManager', () => {
       expect(result.serviceOrder.status).toBe('OPEN');
     });
 
+    it('persists installments for credit card and clears them for other methods', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId
+        .mockResolvedValueOnce(baseServiceOrder)
+        .mockResolvedValueOnce({ ...baseServiceOrder, paymentMethod: 'CREDIT_CARD', paymentInstallments: 6 })
+        .mockResolvedValueOnce(baseServiceOrder)
+        .mockResolvedValueOnce({ ...baseServiceOrder, paymentMethod: 'PIX', paymentInstallments: null });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+
+      await deps.manager.update(actingUser, { id: 'so-1', paymentMethod: 'CREDIT_CARD', paymentInstallments: 6 });
+      expect(deps.serviceOrderRepository.update).toHaveBeenLastCalledWith('so-1', expect.objectContaining({ paymentMethod: 'CREDIT_CARD', paymentInstallments: 6 }));
+
+      await deps.manager.update(actingUser, { id: 'so-1', paymentMethod: 'PIX', paymentInstallments: 12 });
+      expect(deps.serviceOrderRepository.update).toHaveBeenLastCalledWith('so-1', expect.objectContaining({ paymentMethod: 'PIX', paymentInstallments: null }));
+    });
+
     it('rejects an update for a non-existent service order with 404', async () => {
       const deps = buildManager();
       deps.serviceOrderRepository.byId.mockResolvedValue(null);
@@ -269,7 +306,10 @@ describe('ServiceOrderManager', () => {
 
   describe('transition', () => {
     it.each([
+      ['OPEN', 'AWAITING_APPROVAL'],
       ['OPEN', 'IN_PROGRESS'],
+      ['AWAITING_APPROVAL', 'IN_PROGRESS'],
+      ['AWAITING_APPROVAL', 'CANCELLED'],
       ['IN_PROGRESS', 'WAITING_PARTS'],
       ['IN_PROGRESS', 'COMPLETED'],
       ['WAITING_PARTS', 'IN_PROGRESS'],
@@ -294,6 +334,7 @@ describe('ServiceOrderManager', () => {
     });
 
     it.each([
+      ['AWAITING_APPROVAL', 'COMPLETED'],
       ['OPEN', 'DELIVERED'],
       ['OPEN', 'COMPLETED'],
       ['DELIVERED', 'IN_PROGRESS'],
@@ -456,6 +497,120 @@ describe('ServiceOrderManager', () => {
       expect(deps.itemRepository.sumTotalsByServiceOrderIds).toHaveBeenCalledWith(['so-1']);
       expect(result.items[0].totalAmountCents).toBe(12500);
       expect(result.items[0].items).toBeUndefined();
+    });
+  });
+
+  describe('businessSummary', () => {
+    it('calculates revenue, pipeline, overdue deliveries and technician workload', async () => {
+      const deps = buildManager();
+      const now = new Date('2026-07-27T12:00:00Z');
+      deps.serviceOrderRepository.listForBusinessSummary.mockResolvedValue([
+        { ...baseServiceOrder, id: 'delivered', status: 'DELIVERED', technicianId: 'technician-1', closedAt: new Date('2026-07-10T12:00:00Z') },
+        { ...baseServiceOrder, id: 'active', status: 'IN_PROGRESS', technicianId: 'technician-1', expectedDeliveryAt: new Date('2026-07-26T12:00:00Z') },
+      ]);
+      deps.itemRepository.sumTotalsByServiceOrderIds.mockResolvedValue(new Map([['delivered', 10000], ['active', 5000]]));
+      deps.itemRepository.financialItemsByServiceOrderIds.mockResolvedValue([
+        { serviceOrderId: 'delivered', type: 'PART', description: 'Pastilha', lineTotalCents: 6000 },
+        { serviceOrderId: 'delivered', type: 'LABOR', description: 'Troca de pastilhas', lineTotalCents: 4000 },
+      ]);
+      const receipt = { id: 'receipt-1', tenantId: 'tenant-1', serviceOrderId: 'delivered', method: 'PIX', amountCents: 10000, receivedAt: new Date('2026-07-10T12:00:00Z'), confirmedBy: 'user-1', notes: null, createdAt: new Date(), updatedAt: null, deletedAt: null };
+      deps.receiptRepository.byServiceOrderIds.mockResolvedValue([receipt]);
+      deps.receiptRepository.receivedSince.mockResolvedValue([receipt]);
+      deps.userRepository.byIds.mockResolvedValue([baseTechnician]);
+
+      const result = await deps.manager.businessSummary(now);
+
+      expect(result.monthRevenueCents).toBe(10000);
+      expect(result.activePipelineCents).toBe(5000);
+      expect(result.averageTicketCents).toBe(10000);
+      expect(result.partsRevenueCents).toBe(6000);
+      expect(result.laborRevenueCents).toBe(4000);
+      expect(result.inProgressCents).toBe(5000);
+      expect(result.accountsReceivableCents).toBe(5000);
+      expect(result.overdueDeliveries).toBe(1);
+      expect(result.technicianWorkload[0]).toMatchObject({ technicianName: 'Carlos Mecânico', activeOrders: 1 });
+    });
+  });
+
+  describe('receipts', () => {
+    it('creates a monthly pending schedule when payment is not anticipated', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([{ id: 'item-1', serviceOrderId: 'so-1', type: 'SERVICE', description: 'Serviço', quantity: { toNumber: () => 1 }, unitPriceCents: 10001, createdAt: new Date() }]);
+      const createMany = jest.fn().mockResolvedValue({ count: 3 });
+      deps.prisma.transaction.mockImplementation(async (fn) => fn({
+        $executeRaw: jest.fn(),
+        serviceOrderInstallment: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn(), createMany },
+        serviceOrder: { updateMany: jest.fn() },
+        serviceOrderReceipt: { findFirst: jest.fn().mockResolvedValue(null) },
+      }));
+      jest.spyOn(deps.manager, 'getById').mockResolvedValue({ serviceOrder: {} as never });
+
+      await deps.manager.configurePayment(actingUser, {
+        serviceOrderId: 'so-1',
+        method: 'CREDIT_CARD',
+        installments: 3,
+        anticipated: false,
+        firstDueAt: '2026-07-31T12:00:00.000Z',
+      });
+
+      expect(createMany).toHaveBeenCalledWith({ data: expect.arrayContaining([
+        expect.objectContaining({ installmentNumber: 1, amountCents: 3333 }),
+        expect.objectContaining({ installmentNumber: 3, amountCents: 3335 }),
+      ]) });
+    });
+
+    it('creates one full receipt and no schedule for anticipated payment', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([{ id: 'item-1', serviceOrderId: 'so-1', type: 'SERVICE', description: 'Serviço', quantity: { toNumber: () => 1 }, unitPriceCents: 10000, createdAt: new Date() }]);
+      const createReceipt = jest.fn().mockResolvedValue({ id: 'receipt-1' });
+      const createMany = jest.fn();
+      deps.prisma.transaction.mockImplementation(async (fn) => fn({
+        $executeRaw: jest.fn(),
+        serviceOrderInstallment: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn(), createMany },
+        serviceOrder: { updateMany: jest.fn() },
+        serviceOrderReceipt: { findFirst: jest.fn().mockResolvedValue(null), create: createReceipt },
+      }));
+      jest.spyOn(deps.manager, 'getById').mockResolvedValue({ serviceOrder: {} as never });
+
+      await deps.manager.configurePayment(actingUser, {
+        serviceOrderId: 'so-1',
+        method: 'CREDIT_CARD',
+        installments: 6,
+        anticipated: true,
+      });
+
+      expect(createReceipt).toHaveBeenCalledWith({ data: expect.objectContaining({ amountCents: 10000 }) });
+      expect(createMany).not.toHaveBeenCalled();
+    });
+
+    it('confirms a receipt only within the outstanding balance', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, paymentMethod: 'PIX' });
+      const createdReceipt = { id: 'receipt-1', tenantId: 'tenant-1', serviceOrderId: 'so-1', method: 'PIX', amountCents: 10000, receivedAt: new Date(), confirmedBy: 'user-1', notes: null, createdAt: new Date(), updatedAt: null, deletedAt: null };
+      deps.prisma.transaction.mockImplementation((fn) => fn({
+        $executeRaw: jest.fn(),
+        serviceOrderItem: { findMany: jest.fn().mockResolvedValue([buildItem({ quantity: 1, unitPriceCents: 10000 })]) },
+        serviceOrderReceipt: { findMany: jest.fn().mockResolvedValue([]), create: jest.fn().mockResolvedValue(createdReceipt) },
+      }));
+
+      const result = await deps.manager.confirmReceipt(actingUser, { serviceOrderId: 'so-1', method: 'PIX', amountCents: 10000 });
+
+      expect(result.receipt.amountCents).toBe(10000);
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'service_order.receipt_confirmed' }));
+    });
+
+    it('rejects a receipt greater than the outstanding balance', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, paymentMethod: 'PIX' });
+      deps.prisma.transaction.mockImplementation((fn) => fn({
+        $executeRaw: jest.fn(),
+        serviceOrderItem: { findMany: jest.fn().mockResolvedValue([buildItem({ quantity: 1, unitPriceCents: 10000 })]) },
+        serviceOrderReceipt: { findMany: jest.fn().mockResolvedValue([{ amountCents: 8000 }]), create: jest.fn() },
+      }));
+
+      await expect(deps.manager.confirmReceipt(actingUser, { serviceOrderId: 'so-1', method: 'PIX', amountCents: 3000 })).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
     });
   });
 

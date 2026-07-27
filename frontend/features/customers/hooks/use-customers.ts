@@ -15,6 +15,14 @@ export function useCustomersList(request: CustomerListRequest, options?: { enabl
   });
 }
 
+export function useCustomer(id: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['customer', id],
+    queryFn: () => customersApi.get(id),
+    enabled: (options?.enabled ?? true) && Boolean(id),
+  });
+}
+
 export function useCreateCustomer() {
   const queryClient = useQueryClient();
 

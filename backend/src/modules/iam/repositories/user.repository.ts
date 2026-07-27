@@ -18,6 +18,7 @@ export interface UpdateUserInput {
   status?: 'active' | 'invited' | 'disabled';
   inviteTokenHash?: string | null;
   inviteExpiresAt?: Date | null;
+  roleId?: string;
 }
 
 export interface ListUsersFilters {
@@ -101,6 +102,20 @@ export class UserRepository {
     return this.prisma.client.user.updateMany({
       where: { id, deletedAt: null },
       data: patch,
+    });
+  }
+
+  async disableAndRevokeSessions(id: string) {
+    return this.prisma.unscoped.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { status: 'disabled' } });
+      await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+    });
+  }
+
+  async softDeleteAndRevokeSessions(id: string) {
+    return this.prisma.unscoped.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { status: 'disabled', deletedAt: new Date() } });
+      await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
     });
   }
 

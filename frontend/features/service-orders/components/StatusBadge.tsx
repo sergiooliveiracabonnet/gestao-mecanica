@@ -8,6 +8,7 @@ type OperationalVariant = 'neutral' | 'info' | 'attention' | 'success' | 'critic
 // operacional compartilhada pelo sistema (neutra, em curso, atenção etc.).
 const STATUS_VARIANTS: Record<ServiceOrderStatus, OperationalVariant> = {
   OPEN: 'neutral',
+  AWAITING_APPROVAL: 'attention',
   IN_PROGRESS: 'info',
   WAITING_PARTS: 'attention',
   COMPLETED: 'success',

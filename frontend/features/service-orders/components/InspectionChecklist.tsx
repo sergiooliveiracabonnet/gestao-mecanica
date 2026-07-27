@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, CircleHelp, Minus, TriangleAlert } from 'lucide-react';
+import { Check, Minus, TriangleAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import type { InspectionItem, InspectionStatus } from '../checklist';
@@ -40,8 +40,7 @@ export function InspectionChecklist({ items, onChange, disabled = false }: Inspe
           <div key={item.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-text">{item.label}</p>{(item.note || item.status === 'attention' || item.status === 'critical') && <Input aria-label={`Observação de ${item.label}`} className="mt-2 h-8 max-w-md text-xs" placeholder="Adicionar observação" value={item.note} disabled={disabled} onChange={(event) => updateItem(item.id, { note: event.target.value })} />}</div>
             <div className="flex shrink-0 items-center gap-1" role="group" aria-label={`Estado de ${item.label}`}>
-              {STATUS_OPTIONS.map((option) => { const Icon = option.icon; const isSelected = item.status === option.value; return <button key={option.value} type="button" aria-label={`${option.label}${isSelected ? ', selecionado' : ''}`} aria-pressed={isSelected} title={isSelected ? `${option.label} — selecionado` : option.label} disabled={disabled} onClick={() => updateItem(item.id, { status: isSelected ? 'unchecked' : option.value })} className={cn('flex size-9 items-center justify-center rounded-button border border-transparent transition-[background-color,border-color,box-shadow,color,transform] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50', option.className, isSelected && option.selectedClassName)}><Icon className="size-4" aria-hidden="true" />{isSelected && <span className="sr-only">Selecionado</span>}</button>; })}
-              <span className="ml-1 flex size-9 items-center justify-center rounded-button border border-border text-text-muted" title="A observação aparece ao marcar atenção ou crítico"><CircleHelp className="size-4" aria-hidden="true" /></span>
+              {STATUS_OPTIONS.map((option) => { const Icon = option.icon; const isSelected = item.status === option.value; return <button key={option.value} type="button" aria-pressed={isSelected} disabled={disabled} onClick={() => updateItem(item.id, { status: isSelected ? 'unchecked' : option.value })} className={cn('flex min-h-9 items-center justify-center gap-1.5 rounded-button border border-transparent px-2 text-xs font-semibold transition-[background-color,border-color,box-shadow,color,transform] duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50', option.className, isSelected && option.selectedClassName)}><Icon className="size-4" aria-hidden="true" /><span>{option.label}</span></button>; })}
             </div>
           </div>
         ))}

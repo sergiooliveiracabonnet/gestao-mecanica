@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './controllers/auth.controller';
 import { UsersController } from './controllers/users.controller';
+import { AccessProfilesController } from './controllers/access-profiles.controller';
 import { AuthManager } from './managers/auth.manager';
 import { UserManager } from './managers/user.manager';
+import { AccessProfileManager } from './managers/access-profile.manager';
 import { TenantRepository } from './repositories/tenant.repository';
 import { UserRepository } from './repositories/user.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
@@ -13,10 +15,11 @@ import { TokenService } from './services/token.service';
 // DocumentValidatorService vem do DocumentsModule (@Global(), registrado em
 // AppModule) — não precisa estar nos providers aqui.
 @Module({
-  controllers: [AuthController, UsersController],
+  controllers: [AuthController, UsersController, AccessProfilesController],
   providers: [
     AuthManager,
     UserManager,
+    AccessProfileManager,
     TenantRepository,
     UserRepository,
     RefreshTokenRepository,
@@ -28,6 +31,6 @@ import { TokenService } from './services/token.service';
   // existe e pertence ao tenant — mesmo padrão de export do CustomerRepository.
   // TenantRepository: MaintenanceAlertsModule (Feature Motor de Manutenção
   // Preventiva) precisa iterar todos os tenants no job diário de scan.
-  exports: [UserRepository, TenantRepository],
+  exports: [UserRepository, TenantRepository, RoleRepository],
 })
 export class IamModule {}

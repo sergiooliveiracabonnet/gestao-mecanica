@@ -12,6 +12,16 @@ interface StatusTransitionButtonsProps {
   status: ServiceOrderStatus;
 }
 
+const ACTION_LABELS: Record<ServiceOrderStatus, string> = {
+  OPEN: 'Reabrir OS',
+  AWAITING_APPROVAL: 'Enviar para aprovação',
+  IN_PROGRESS: 'Iniciar serviço',
+  WAITING_PARTS: 'Aguardar peças',
+  COMPLETED: 'Marcar como concluída',
+  DELIVERED: 'Registrar entrega',
+  CANCELLED: 'Cancelar OS',
+};
+
 export function StatusTransitionButtons({ serviceOrderId, status }: StatusTransitionButtonsProps) {
   const transition = useTransitionServiceOrder();
   const targets = SERVICE_ORDER_TRANSITIONS[status];
@@ -40,7 +50,7 @@ export function StatusTransitionButtons({ serviceOrderId, status }: StatusTransi
           disabled={transition.isPending}
           onClick={() => handleTransition(toStatus)}
         >
-          {SERVICE_ORDER_STATUS_LABELS[toStatus]}
+          {ACTION_LABELS[toStatus]}
         </Button>
       ))}
     </div>

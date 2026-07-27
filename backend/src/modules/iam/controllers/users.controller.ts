@@ -4,16 +4,18 @@ import type { AuthResponse, InviteUserResponse, PaginationData, UserListItemResp
 import { Public } from '../../../shared/decorators/public.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
+import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import { AUTH_THROTTLE } from '../../../shared/constants/throttle.constants';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { UserManager } from '../managers/user.manager';
-import { AcceptInviteDto, InviteUserDto, UserListDto } from '../dto/user.dto';
+import { AcceptInviteDto, InviteUserDto, ManageUserAccessDto, UserListDto } from '../dto/user.dto';
 
 @Controller('api/v1/users')
 export class UsersController {
   constructor(private readonly userManager: UserManager) {}
 
   @Roles('ADMIN', 'MANAGER')
+  @Permissions('team.manage')
   @Post('invite')
   async invite(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: InviteUserDto): Promise<InviteUserResponse> {
     return this.userManager.invite(actingUser, body);
@@ -28,9 +30,26 @@ export class UsersController {
   }
 
   @Roles('ADMIN', 'MANAGER')
+  @Permissions('team.view')
   @HttpCode(HttpStatus.OK)
   @Post('list')
-  async list(@Body() body: UserListDto): Promise<PaginationData<UserListItemResponse>> {
-    return this.userManager.list(body);
+  async list(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UserListDto): Promise<PaginationData<UserListItemResponse>> {
+    return this.userManager.list(body, actingUser);
+  }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('team.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('disable')
+  async disable(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) {
+    return this.userManager.disable(actingUser, body);
+  }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('team.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('delete')
+  async delete(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) {
+    return this.userManager.delete(actingUser, body);
   }
 }

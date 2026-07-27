@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import type { MaintenanceAlertListItemResponse, MaintenanceAlertResponse, PaginationData } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
+import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { MaintenanceAlertManager } from '../managers/maintenance-alert.manager';
 import { MaintenanceAlertListDto, ResolveMaintenanceAlertDto } from '../dto/maintenance-alert.dto';
@@ -16,6 +17,7 @@ export class MaintenanceAlertsController {
   constructor(private readonly maintenanceAlertManager: MaintenanceAlertManager) {}
 
   @Roles(...ALL_ROLES)
+  @Permissions('alerts.view')
   @HttpCode(HttpStatus.OK)
   @Post('maintenance-alerts/list')
   async list(@Body() body: MaintenanceAlertListDto): Promise<PaginationData<MaintenanceAlertListItemResponse>> {
@@ -23,6 +25,7 @@ export class MaintenanceAlertsController {
   }
 
   @Roles(...ALL_ROLES)
+  @Permissions('alerts.manage')
   @HttpCode(HttpStatus.OK)
   @Post('maintenance-alerts/resolve')
   async resolve(

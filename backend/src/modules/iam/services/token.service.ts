@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes } from 'node:crypto';
-import type { UserRole } from '@oficina/contracts';
+import type { PermissionKey, UserRole } from '@oficina/contracts';
 
 const REFRESH_TOKEN_BYTES = 48;
 const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 604800; // 7 dias
@@ -11,6 +11,8 @@ export interface AccessTokenPayload {
   userId: string;
   tenantId: string;
   role: UserRole;
+  roleId?: string;
+  permissions?: PermissionKey[];
 }
 
 export interface OpaqueToken {

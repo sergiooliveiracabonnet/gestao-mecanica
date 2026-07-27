@@ -92,7 +92,7 @@ export class AuthManager {
       return { tenant, user };
     });
 
-    const { accessToken, refreshToken } = await this.issueTokens(user, adminRole);
+    const { accessToken, refreshToken, permissions } = await this.issueTokens(user, adminRole);
 
     await this.auditLog.record({
       tenantId: tenant.id,
@@ -106,7 +106,7 @@ export class AuthManager {
     return {
       accessToken,
       refreshToken,
-      user: this.toUserResponse(user, adminRole),
+      user: this.toUserResponse(user, adminRole, permissions),
       tenant: {
         id: tenant.id,
         name: tenant.name,
@@ -147,7 +147,7 @@ export class AuthManager {
       throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel do usuário não encontrado.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    const { accessToken, refreshToken } = await this.issueTokens(user, role);
+    const { accessToken, refreshToken, permissions } = await this.issueTokens(user, role);
 
     await this.auditLog.record({
       tenantId: user.tenantId,
@@ -158,7 +158,7 @@ export class AuthManager {
       metadata: {},
     });
 
-    return { accessToken, refreshToken, user: this.toUserResponse(user, role) };
+    return { accessToken, refreshToken, user: this.toUserResponse(user, role, permissions) };
   }
 
   async refresh(refreshToken: string): Promise<RefreshResponse> {
@@ -219,11 +219,14 @@ export class AuthManager {
     }
   }
 
-  private async issueTokens(user: UserEntity, role: RoleEntity): Promise<{ accessToken: string; refreshToken: string }> {
+  private async issueTokens(user: UserEntity, role: RoleEntity): Promise<{ accessToken: string; refreshToken: string; permissions: import('@oficina/contracts').PermissionKey[] }> {
+    const permissions = await (this.roleRepository.permissionKeys?.(role.id) ?? Promise.resolve([])) as import('@oficina/contracts').PermissionKey[];
     const accessToken = await this.tokenService.signAccessToken({
       userId: user.id,
       tenantId: user.tenantId,
-      role: role.name as UserRole,
+      role: (role.baseRole ?? role.name) as UserRole,
+      roleId: role.id,
+      permissions,
     });
 
     const opaque = this.tokenService.generateRefreshToken();
@@ -233,16 +236,19 @@ export class AuthManager {
       expiresAt: opaque.expiresAt,
     });
 
-    return { accessToken, refreshToken: opaque.token };
+    return { accessToken, refreshToken: opaque.token, permissions };
   }
 
-  private toUserResponse(user: UserEntity, role: RoleEntity): UserResponse {
+  private toUserResponse(user: UserEntity, role: RoleEntity, permissions: import('@oficina/contracts').PermissionKey[] = []): UserResponse {
     return {
       id: user.id,
       tenantId: user.tenantId,
       email: user.email,
       name: user.name,
-      role: role.name as UserRole,
+      role: (role.baseRole ?? role.name) as UserRole,
+      profileId: role.id,
+      profileName: role.name,
+      permissions,
       status: user.status as UserResponse['status'],
       createdAt: user.createdAt.toISOString(),
     };

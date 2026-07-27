@@ -7,7 +7,7 @@ import './globals.css';
 const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Oficina SaaS',
+  title: 'Oficina',
   description: 'ERP SaaS multi-tenant para oficinas mecânicas',
 };
 

@@ -206,3 +206,44 @@
     }
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+    background: white;
+  }
+
+  html,
+  body {
+    background: white !important;
+    color-scheme: light !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-document {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .print-summary-sheet {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    width: 100% !important;
+    max-width: none !important;
+    height: 273mm;
+    box-shadow: none !important;
+  }
+
+  .print-approval-copy {
+    break-inside: avoid;
+  }
+
+  .print-break-inside-avoid {
+    break-inside: avoid;
+  }
+}

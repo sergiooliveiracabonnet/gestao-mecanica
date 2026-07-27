@@ -8,6 +8,7 @@ import { TenantContextModule } from './shared/tenant-context/tenant-context.modu
 import { JwtConfigModule } from './shared/jwt/jwt-config.module';
 import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
 import { RolesGuard } from './shared/guards/roles.guard';
+import { PermissionsGuard } from './shared/guards/permissions.guard';
 import { TenantContextInterceptor } from './shared/interceptors/tenant-context.interceptor';
 import { CaseConversionInterceptor } from './shared/interceptors/case-conversion.interceptor';
 import { QueueModule } from './shared/queue/queue.module';
@@ -19,6 +20,9 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { ServiceOrdersModule } from './modules/service-orders/service-orders.module';
 import { FipeModule } from './modules/fipe/fipe.module';
 import { MaintenanceAlertsModule } from './modules/maintenance-alerts/maintenance-alerts.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
+import { FinancialModule } from './modules/financial/financial.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -52,6 +56,9 @@ import { MaintenanceAlertsModule } from './modules/maintenance-alerts/maintenanc
     ServiceOrdersModule,
     FipeModule,
     MaintenanceAlertsModule,
+    AppointmentsModule,
+    FinancialModule,
+    SettingsModule,
   ],
   providers: [
     // Ordem importa: ThrottlerGuard e JwtAuthGuard rodam antes do RolesGuard
@@ -59,6 +66,7 @@ import { MaintenanceAlertsModule } from './modules/maintenance-alerts/maintenanc
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
     // Interceptors rodam depois dos guards no pipeline do Nest — por isso o
     // TenantContextInterceptor (que lê request.user) é seguro aqui.
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },

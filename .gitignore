@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 .next/
+.next-stale-*/
 .turbo/
 coverage/
 *.tsbuildinfo
@@ -36,3 +37,6 @@ Thumbs.db
 frontend/artifacts/
 frontend/test-results/
 frontend/frontend/
+
+# visual brainstorming companion mockups (superpowers:brainstorming skill)
+.superpowers/

@@ -7,6 +7,7 @@ import type {
   PaginationData,
   UserListItemResponse,
   UserListRequest,
+  ManageUserAccessRequest,
 } from '@oficina/contracts';
 
 export const usersApi = {
@@ -23,5 +24,13 @@ export const usersApi = {
   async list(request: UserListRequest): Promise<PaginationData<UserListItemResponse>> {
     const response = await apiClient.post<PaginationData<UserListItemResponse>>('/api/v1/users/list', request);
     return response.data;
+  },
+
+  async disable(request: ManageUserAccessRequest): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/users/disable', request)).data;
+  },
+
+  async delete(request: ManageUserAccessRequest): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/users/delete', request)).data;
   },
 };

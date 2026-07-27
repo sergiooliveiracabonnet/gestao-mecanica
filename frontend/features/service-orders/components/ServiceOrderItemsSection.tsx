@@ -219,7 +219,7 @@ export function ServiceOrderItemsSection({ serviceOrder }: ServiceOrderItemsSect
       )}
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <Select value={form.type} onValueChange={(value) => setForm((prev) => ({ ...prev, type: value as ServiceOrderItemType }))}>
+        <label className="space-y-1.5 text-xs font-semibold text-text-muted">Tipo<Select value={form.type} onValueChange={(value) => setForm((prev) => ({ ...prev, type: value as ServiceOrderItemType }))}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -227,19 +227,19 @@ export function ServiceOrderItemsSection({ serviceOrder }: ServiceOrderItemsSect
             <SelectItem value="PART">Peça</SelectItem>
             <SelectItem value="LABOR">Mão de obra</SelectItem>
           </SelectContent>
-        </Select>
-        <Input
+        </Select></label>
+        <label className="space-y-1.5 text-xs font-semibold text-text-muted sm:col-span-2">Descrição<Input
           className="sm:col-span-2"
           placeholder="Descrição"
           value={form.description}
           onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-        />
-        <Input placeholder="Qtd." value={form.quantity} onChange={(event) => setForm((prev) => ({ ...prev, quantity: event.target.value }))} />
-        <Input
+        /></label>
+        <label className="space-y-1.5 text-xs font-semibold text-text-muted">Quantidade<Input placeholder="Qtd." value={form.quantity} onChange={(event) => setForm((prev) => ({ ...prev, quantity: event.target.value }))} /></label>
+        <label className="space-y-1.5 text-xs font-semibold text-text-muted">Valor unitário<Input
           placeholder="Valor unit. (R$)"
           value={form.unitPrice}
           onChange={(event) => setForm((prev) => ({ ...prev, unitPrice: event.target.value }))}
-        />
+        /></label>
       </div>
       <div className="mt-3 flex justify-end">
         <Button onClick={handleAdd} disabled={addItem.isPending}>

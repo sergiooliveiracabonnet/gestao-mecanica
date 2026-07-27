@@ -8,6 +8,7 @@ import { ServiceOrderManager } from './managers/service-order.manager';
 import { ServiceOrderRepository } from './repositories/service-order.repository';
 import { ServiceOrderStatusHistoryRepository } from './repositories/service-order-status-history.repository';
 import { ServiceOrderItemRepository } from './repositories/service-order-item.repository';
+import { ServiceOrderReceiptRepository } from './repositories/service-order-receipt.repository';
 
 // Importa VehiclesModule/CustomersModule/IamModule pra ter acesso aos
 // repositórios que exportam — ServiceOrderManager valida vehicleId (e lê
@@ -21,10 +22,10 @@ import { ServiceOrderItemRepository } from './repositories/service-order-item.re
 @Module({
   imports: [VehiclesModule, CustomersModule, IamModule, forwardRef(() => MaintenanceAlertsModule)],
   controllers: [ServiceOrdersController],
-  providers: [ServiceOrderManager, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository],
+  providers: [ServiceOrderManager, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository],
   // MaintenanceAlertsModule (Feature Motor de Manutenção Preventiva) importa
   // este módulo pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped
   // no job diário de scan.
-  exports: [ServiceOrderRepository],
+  exports: [ServiceOrderRepository, ServiceOrderManager],
 })
 export class ServiceOrdersModule {}

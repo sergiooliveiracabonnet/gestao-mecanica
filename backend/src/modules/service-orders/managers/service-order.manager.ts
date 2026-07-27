@@ -1,9 +1,16 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type {
   CreateServiceOrderItemRequest,
+  ConfigureServiceOrderPaymentRequest,
+  ConfirmServiceOrderInstallmentRequest,
+  ConfirmServiceOrderReceiptRequest,
+  DeleteServiceOrderReceiptRequest,
   CreateServiceOrderRequest,
+  DashboardBusinessSummaryResponse,
   PaginationData,
   ServiceOrderItemResponse,
+  ServiceOrderInstallmentResponse,
+  ServiceOrderReceiptResponse,
   ServiceOrderListRequest,
   ServiceOrderResponse,
   ServiceOrderStatusHistoryItemResponse,
@@ -15,6 +22,8 @@ import type {
   Customer as CustomerEntity,
   ServiceOrder as ServiceOrderEntity,
   ServiceOrderItem as ServiceOrderItemEntity,
+  ServiceOrderInstallment as ServiceOrderInstallmentEntity,
+  ServiceOrderReceipt as ServiceOrderReceiptEntity,
   ServiceOrderStatusHistory as ServiceOrderStatusHistoryEntity,
   User as UserEntity,
   Vehicle as VehicleEntity,
@@ -30,6 +39,7 @@ import { UserRepository } from '../../iam/repositories/user.repository';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderStatusHistoryRepository } from '../repositories/service-order-status-history.repository';
 import { ServiceOrderItemRepository } from '../repositories/service-order-item.repository';
+import { ServiceOrderReceiptRepository } from '../repositories/service-order-receipt.repository';
 import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './service-order-state-machine';
 // MaintenanceAlertRepository vem de MaintenanceAlertsModule, que
 // ServiceOrdersModule importa via `forwardRef()` (o import é recíproco —
@@ -44,6 +54,7 @@ export class ServiceOrderManager {
     private readonly serviceOrderRepository: ServiceOrderRepository,
     private readonly statusHistoryRepository: ServiceOrderStatusHistoryRepository,
     private readonly itemRepository: ServiceOrderItemRepository,
+    private readonly receiptRepository: ServiceOrderReceiptRepository,
     private readonly vehicleRepository: VehicleRepository,
     private readonly customerRepository: CustomerRepository,
     private readonly userRepository: UserRepository,
@@ -76,6 +87,13 @@ export class ServiceOrderManager {
           technicianId: request.technicianId,
           checklist: request.checklist,
           diagnosis: request.diagnosis,
+          entryMileage: request.entryMileage,
+          customerComplaint: request.customerComplaint,
+          receptionNotes: request.receptionNotes,
+          recommendedService: request.recommendedService,
+          expectedDeliveryAt: request.expectedDeliveryAt === null ? null : request.expectedDeliveryAt ? new Date(request.expectedDeliveryAt) : undefined,
+          paymentMethod: request.paymentMethod,
+          paymentInstallments: request.paymentMethod === 'CREDIT_CARD' ? request.paymentInstallments : null,
           openedAt,
         },
         tx,
@@ -129,6 +147,17 @@ export class ServiceOrderManager {
       technicianId: request.technicianId,
       checklist: request.checklist,
       diagnosis: request.diagnosis,
+      entryMileage: request.entryMileage,
+      customerComplaint: request.customerComplaint,
+      receptionNotes: request.receptionNotes,
+      recommendedService: request.recommendedService,
+      expectedDeliveryAt: request.expectedDeliveryAt === null ? null : request.expectedDeliveryAt ? new Date(request.expectedDeliveryAt) : undefined,
+      paymentMethod: request.paymentMethod,
+      paymentInstallments: request.paymentMethod === undefined
+        ? undefined
+        : request.paymentMethod === 'CREDIT_CARD'
+          ? request.paymentInstallments
+          : null,
     });
 
     const updated = await this.serviceOrderRepository.byId(request.id);
@@ -269,15 +298,17 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
     }
 
-    const [vehicle, technician, history, items] = await Promise.all([
+    const [vehicle, technician, history, items, receipts, installments] = await Promise.all([
       this.vehicleRepository.byId(serviceOrder.vehicleId),
       serviceOrder.technicianId ? this.userRepository.byId(serviceOrder.technicianId) : Promise.resolve(null),
       this.statusHistoryRepository.byServiceOrderId(id),
       this.itemRepository.byServiceOrderId(id),
+      this.receiptRepository.byServiceOrderId(id),
+      this.prisma.client.serviceOrderInstallment.findMany({ where: { serviceOrderId: id, deletedAt: null }, orderBy: { installmentNumber: 'asc' } }),
     ]);
     const customer = await this.customerRepository.byId(serviceOrder.customerId);
 
-    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, { history, items }) };
+    return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, { history, items, receipts, installments }) };
   }
 
   async list(request: ServiceOrderListRequest): Promise<PaginationData<ServiceOrderResponse>> {
@@ -318,6 +349,97 @@ export class ServiceOrderManager {
       offset: request.offset,
       limit: request.limit,
       hasMore: request.offset + items.length < total,
+    };
+  }
+
+  async businessSummary(now = new Date()): Promise<DashboardBusinessSummaryResponse> {
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sixMonthsStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    const orders = await this.serviceOrderRepository.listForBusinessSummary(sixMonthsStart);
+    const [totalsByOrderId, financialItems, allReceipts, cashReceipts, technicians, vehicles, customers] = await Promise.all([
+      this.itemRepository.sumTotalsByServiceOrderIds(orders.map((order) => order.id)),
+      this.itemRepository.financialItemsByServiceOrderIds(orders.map((order) => order.id)),
+      this.receiptRepository.byServiceOrderIds(orders.map((order) => order.id)),
+      this.receiptRepository.receivedSince(sixMonthsStart),
+      this.userRepository.byIds([...new Set(orders.map((order) => order.technicianId).filter((id): id is string => !!id))]),
+      this.vehicleRepository.byIds([...new Set(orders.map((order) => order.vehicleId))]),
+      this.customerRepository.byIds([...new Set(orders.map((order) => order.customerId))]),
+    ]);
+    const technicianNames = new Map(technicians.map((technician) => [technician.id, technician.name]));
+    const delivered = orders.filter((order) => order.status === 'DELIVERED' && order.closedAt);
+    const currentDelivered = delivered.filter((order) => order.closedAt! >= currentMonthStart);
+    const total = (selected: typeof orders) => selected.reduce((sum, order) => sum + (totalsByOrderId.get(order.id) ?? 0), 0);
+    const activeStatuses = ['OPEN', 'AWAITING_APPROVAL', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED'];
+    const active = orders.filter((order) => activeStatuses.includes(order.status));
+
+    const monthlyRevenue = Array.from({ length: 6 }, (_, index) => {
+      const start = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
+      const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+      return {
+        month: start.toISOString().slice(0, 7),
+        revenueCents: cashReceipts.filter((receipt) => receipt.receivedAt >= start && receipt.receivedAt < end).reduce((sum, receipt) => sum + receipt.amountCents, 0),
+      };
+    });
+    const workload = new Map<string, number>();
+    active.forEach((order) => workload.set(order.technicianId ?? 'unassigned', (workload.get(order.technicianId ?? 'unassigned') ?? 0) + 1));
+
+    const currentReceipts = cashReceipts.filter((receipt) => receipt.receivedAt >= currentMonthStart);
+    const previousReceipts = cashReceipts.filter((receipt) => receipt.receivedAt >= previousMonthStart && receipt.receivedAt < currentMonthStart);
+    const monthRevenueCents = currentReceipts.reduce((sum, receipt) => sum + receipt.amountCents, 0);
+    const receivedByOrderId = new Map<string, number>();
+    allReceipts.forEach((receipt) => receivedByOrderId.set(receipt.serviceOrderId, (receivedByOrderId.get(receipt.serviceOrderId) ?? 0) + receipt.amountCents));
+    const outstanding = (order: typeof orders[number]) => Math.max(0, (totalsByOrderId.get(order.id) ?? 0) - (receivedByOrderId.get(order.id) ?? 0));
+    const currentDeliveredIds = new Set(currentDelivered.map((order) => order.id));
+    const currentItems = financialItems.filter((item) => currentDeliveredIds.has(item.serviceOrderId));
+    const revenueByType = (type: 'PART' | 'LABOR') => currentItems.filter((item) => item.type === type).reduce((sum, item) => sum + item.lineTotalCents, 0);
+    const serviceRanking = new Map<string, { count: number; revenueCents: number }>();
+    currentItems.filter((item) => item.type === 'LABOR').forEach((item) => {
+      const current = serviceRanking.get(item.description) ?? { count: 0, revenueCents: 0 };
+      serviceRanking.set(item.description, { count: current.count + 1, revenueCents: current.revenueCents + item.lineTotalCents });
+    });
+    const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+    const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+    return {
+      monthRevenueCents,
+      previousMonthRevenueCents: previousReceipts.reduce((sum, receipt) => sum + receipt.amountCents, 0),
+      activePipelineCents: total(active),
+      accountsReceivableCents: orders.reduce((sum, order) => sum + outstanding(order), 0),
+      averageTicketCents: currentDelivered.length ? Math.round(monthRevenueCents / currentDelivered.length) : 0,
+      overdueDeliveries: active.filter((order) => order.expectedDeliveryAt && order.expectedDeliveryAt < now).length,
+      deliveredThisMonth: currentDelivered.length,
+      receiptsThisMonth: currentReceipts.length,
+      partsRevenueCents: revenueByType('PART'),
+      laborRevenueCents: revenueByType('LABOR'),
+      openOrders: active.length,
+      completedAwaitingDeliveryCents: total(active.filter((order) => order.status === 'COMPLETED')),
+      inProgressCents: total(active.filter((order) => order.status === 'IN_PROGRESS')),
+      monthlyRevenue,
+      technicianWorkload: [...workload.entries()].map(([technicianId, activeOrders]) => ({
+        technicianId: technicianId === 'unassigned' ? undefined : technicianId,
+        technicianName: technicianId === 'unassigned' ? 'Sem técnico' : technicianNames.get(technicianId) ?? 'Técnico removido',
+        activeOrders,
+      })).sort((left, right) => right.activeOrders - left.activeOrders),
+      financialPipeline: orders
+        .map((order) => {
+          const vehicle = vehicleById.get(order.vehicleId);
+          return {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            status: order.status as 'OPEN' | 'AWAITING_APPROVAL' | 'IN_PROGRESS' | 'WAITING_PARTS' | 'COMPLETED' | 'DELIVERED',
+            customerName: customerById.get(order.customerId)?.name ?? 'Cliente removido',
+            vehicleLabel: vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Veículo removido',
+            vehiclePlate: vehicle?.plate ?? '—',
+            amountCents: outstanding(order),
+            expectedDeliveryAt: order.expectedDeliveryAt?.toISOString(),
+          };
+        })
+        .filter((order) => order.amountCents > 0)
+        .sort((left, right) => right.amountCents - left.amountCents)
+        .slice(0, 8),
+      topServices: [...serviceRanking.entries()]
+        .map(([description, values]) => ({ description, ...values }))
+        .sort((left, right) => right.revenueCents - left.revenueCents)
+        .slice(0, 5),
     };
   }
 
@@ -386,6 +508,168 @@ export class ServiceOrderManager {
     return { item: this.toItemResponse(existing) };
   }
 
+  async configurePayment(actingUser: AuthenticatedUser, request: ConfigureServiceOrderPaymentRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
+    const serviceOrder = await this.serviceOrderRepository.byId(request.serviceOrderId);
+    if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    const installmentCount = request.method === 'CREDIT_CARD' ? request.installments : 1;
+    if (!request.anticipated && !request.firstDueAt) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe a data da primeira parcela.', HttpStatus.BAD_REQUEST);
+    }
+    const totalAmountCents = await this.computeTotalAmountCents(serviceOrder.id);
+    if (totalAmountCents <= 0) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Adicione peças ou serviços antes de configurar o pagamento.', HttpStatus.BAD_REQUEST);
+    }
+
+    await this.prisma.transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serviceOrder.id}))`;
+      const [paidInstallment, existingReceipt] = await Promise.all([
+        tx.serviceOrderInstallment.findFirst({ where: { serviceOrderId: serviceOrder.id, status: 'PAID', deletedAt: null } }),
+        tx.serviceOrderReceipt.findFirst({ where: { serviceOrderId: serviceOrder.id, deletedAt: null } }),
+      ]);
+      if (paidInstallment || existingReceipt) {
+        throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Não é possível alterar uma condição que já possui recebimento confirmado.', HttpStatus.BAD_REQUEST);
+      }
+      await tx.serviceOrderInstallment.updateMany({ where: { serviceOrderId: serviceOrder.id, deletedAt: null }, data: { deletedAt: new Date() } });
+      await tx.serviceOrder.updateMany({
+        where: { id: serviceOrder.id, deletedAt: null },
+        data: {
+          paymentMethod: request.method,
+          paymentInstallments: installmentCount,
+          paymentAnticipated: request.anticipated,
+          paymentFirstDueAt: request.firstDueAt ? new Date(request.firstDueAt) : null,
+        },
+      });
+
+      if (request.anticipated) {
+        await tx.serviceOrderReceipt.create({ data: {
+          tenantId: actingUser.tenantId,
+          serviceOrderId: serviceOrder.id,
+          method: request.method,
+          amountCents: totalAmountCents,
+          receivedAt: new Date(),
+          confirmedBy: actingUser.userId,
+          notes: `Recebimento antecipado${installmentCount > 1 ? ` · ${installmentCount}x` : ''}`,
+        } });
+        return;
+      }
+
+      const firstDueAt = new Date(request.firstDueAt!);
+      const regularAmountCents = Math.floor(totalAmountCents / installmentCount);
+      await tx.serviceOrderInstallment.createMany({
+        data: Array.from({ length: installmentCount }, (_, index) => ({
+          tenantId: actingUser.tenantId,
+          serviceOrderId: serviceOrder.id,
+          installmentNumber: index + 1,
+          installmentCount,
+          amountCents: index === installmentCount - 1
+            ? totalAmountCents - regularAmountCents * (installmentCount - 1)
+            : regularAmountCents,
+          dueAt: addMonthsClamped(firstDueAt, index),
+        })),
+      });
+    });
+
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'service_order.payment_configured', entity: 'service_order', entityId: serviceOrder.id, metadata: { method: request.method, installments: installmentCount, anticipated: request.anticipated } });
+    return this.getById(serviceOrder.id);
+  }
+
+  async confirmInstallment(actingUser: AuthenticatedUser, request: ConfirmServiceOrderInstallmentRequest): Promise<{ installment: ServiceOrderInstallmentResponse }> {
+    const installment = await this.prisma.client.serviceOrderInstallment.findFirst({ where: { id: request.id, deletedAt: null } });
+    if (!installment) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Parcela não encontrada.', HttpStatus.NOT_FOUND);
+    const serviceOrder = await this.serviceOrderRepository.byId(installment.serviceOrderId);
+    if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    const updated = await this.prisma.transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${installment.serviceOrderId}))`;
+      const current = await tx.serviceOrderInstallment.findFirst({ where: { id: installment.id, deletedAt: null } });
+      if (!current || current.status === 'PAID') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Esta parcela já foi recebida.', HttpStatus.BAD_REQUEST);
+      const receipt = await tx.serviceOrderReceipt.create({ data: {
+        tenantId: actingUser.tenantId,
+        serviceOrderId: serviceOrder.id,
+        method: serviceOrder.paymentMethod ?? 'CREDIT_CARD',
+        amountCents: current.amountCents,
+        receivedAt: new Date(),
+        confirmedBy: actingUser.userId,
+        notes: `Parcela ${current.installmentNumber}/${current.installmentCount}`,
+      } });
+      return tx.serviceOrderInstallment.update({
+        where: { id: installment.id },
+        data: { status: 'PAID', paidAt: new Date(), receiptId: receipt.id },
+      });
+    });
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'service_order.installment_confirmed', entity: 'service_order_installment', entityId: updated.id, metadata: { serviceOrderId: serviceOrder.id, amountCents: updated.amountCents } });
+    return { installment: this.toInstallmentResponse(updated) };
+  }
+
+  async listDueInstallments(limit: number): Promise<{ items: ServiceOrderInstallmentResponse[]; total: number }> {
+    const alertUntil = new Date();
+    alertUntil.setDate(alertUntil.getDate() + 3);
+    const where = { status: 'PENDING', dueAt: { lte: alertUntil }, deletedAt: null };
+    const [installments, total] = await Promise.all([
+      this.prisma.client.serviceOrderInstallment.findMany({ where, orderBy: { dueAt: 'asc' }, take: limit }),
+      this.prisma.client.serviceOrderInstallment.count({ where }),
+    ]);
+    const orderIds = [...new Set(installments.map((item) => item.serviceOrderId))];
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { id: { in: orderIds }, deletedAt: null } });
+    const customers = await this.customerRepository.byIds([...new Set(orders.map((order) => order.customerId))]);
+    const vehicles = await this.vehicleRepository.byIds([...new Set(orders.map((order) => order.vehicleId))]);
+    const orderMap = new Map(orders.map((order) => [order.id, order]));
+    const customerMap = new Map(customers.map((customer) => [customer.id, customer]));
+    const vehicleMap = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+    return {
+      total,
+      items: installments.map((installment) => {
+        const order = orderMap.get(installment.serviceOrderId);
+        return {
+          ...this.toInstallmentResponse(installment),
+          orderNumber: order?.orderNumber,
+          customerName: order ? customerMap.get(order.customerId)?.name : undefined,
+          vehiclePlate: order ? vehicleMap.get(order.vehicleId)?.plate : undefined,
+        };
+      }),
+    };
+  }
+
+  async confirmReceipt(actingUser: AuthenticatedUser, request: ConfirmServiceOrderReceiptRequest): Promise<{ receipt: ServiceOrderReceiptResponse }> {
+    const serviceOrder = await this.serviceOrderRepository.byId(request.serviceOrderId);
+    if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    if (!serviceOrder.paymentMethod) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Defina primeiro a forma de pagamento combinada na OS.', HttpStatus.BAD_REQUEST);
+    }
+    const receipt = await this.prisma.transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serviceOrder.id}))`;
+      const [items, receipts] = await Promise.all([
+        tx.serviceOrderItem.findMany({ where: { serviceOrderId: serviceOrder.id, deletedAt: null } }),
+        tx.serviceOrderReceipt.findMany({ where: { serviceOrderId: serviceOrder.id, deletedAt: null } }),
+      ]);
+      const totalAmountCents = items.reduce((sum, item) => sum + Math.round(item.quantity.toNumber() * item.unitPriceCents), 0);
+      const received = receipts.reduce((sum, item) => sum + item.amountCents, 0);
+      if (request.amountCents > totalAmountCents - received) {
+        throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_EXCEEDS_BALANCE, 'O valor recebido é maior que o saldo pendente.', HttpStatus.BAD_REQUEST);
+      }
+      return tx.serviceOrderReceipt.create({ data: {
+        tenantId: actingUser.tenantId,
+        serviceOrderId: serviceOrder.id,
+        method: request.method,
+        amountCents: request.amountCents,
+        receivedAt: request.receivedAt ? new Date(request.receivedAt) : new Date(),
+        confirmedBy: actingUser.userId,
+        notes: request.notes?.trim() || undefined,
+      } });
+    });
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'service_order.receipt_confirmed', entity: 'service_order_receipt', entityId: receipt.id, metadata: { serviceOrderId: serviceOrder.id, amountCents: receipt.amountCents, method: receipt.method } });
+    return { receipt: this.toReceiptResponse(receipt) };
+  }
+
+  async deleteReceipt(actingUser: AuthenticatedUser, request: DeleteServiceOrderReceiptRequest): Promise<{ success: true }> {
+    const receipt = await this.receiptRepository.byId(request.id);
+    if (!receipt) throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_NOT_FOUND, 'Recebimento não encontrado.', HttpStatus.NOT_FOUND);
+    const serviceOrder = await this.serviceOrderRepository.byId(receipt.serviceOrderId);
+    if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_NOT_FOUND, 'Recebimento não encontrado.', HttpStatus.NOT_FOUND);
+    await this.receiptRepository.softDelete(receipt.id);
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'service_order.receipt_reversed', entity: 'service_order_receipt', entityId: receipt.id, metadata: { serviceOrderId: serviceOrder.id, amountCents: receipt.amountCents } });
+    return { success: true };
+  }
+
   private async computeTotalAmountCents(serviceOrderId: string): Promise<number> {
     const items = await this.itemRepository.byServiceOrderId(serviceOrderId);
     return items.reduce((sum, item) => sum + this.toItemResponse(item).lineTotalCents, 0);
@@ -418,6 +702,8 @@ export class ServiceOrderManager {
       // pelo chamador (list/create/update/transition/delete). Nunca um
       // campo denormalizado (ver plano itens-e-preco-da-os.md).
       items?: ServiceOrderItemEntity[];
+      receipts?: ServiceOrderReceiptEntity[];
+      installments?: ServiceOrderInstallmentEntity[];
       totalAmountCentsOverride?: number;
     },
   ): ServiceOrderResponse {
@@ -425,12 +711,17 @@ export class ServiceOrderManager {
     const totalAmountCents = itemResponses
       ? itemResponses.reduce((sum, item) => sum + item.lineTotalCents, 0)
       : (options?.totalAmountCentsOverride ?? 0);
+    const receiptResponses = options?.receipts?.map((receipt) => this.toReceiptResponse(receipt));
+    const receivedAmountCents = receiptResponses?.reduce((sum, receipt) => sum + receipt.amountCents, 0) ?? 0;
+    const outstandingAmountCents = Math.max(0, totalAmountCents - receivedAmountCents);
 
     return {
       id: serviceOrder.id,
       tenantId: serviceOrder.tenantId,
+      orderNumber: serviceOrder.orderNumber,
       customerId: serviceOrder.customerId,
       customerName: customer?.name ?? 'Cliente removido',
+      customerPhone: customer?.phone ?? '—',
       vehicleId: serviceOrder.vehicleId,
       vehicleBrand: vehicle?.brand ?? '—',
       vehicleModel: vehicle?.model ?? '—',
@@ -438,6 +729,15 @@ export class ServiceOrderManager {
       status: serviceOrder.status as ServiceOrderResponse['status'],
       checklist: (serviceOrder.checklist as Record<string, unknown> | null) ?? undefined,
       diagnosis: serviceOrder.diagnosis ?? undefined,
+      entryMileage: serviceOrder.entryMileage ?? undefined,
+      customerComplaint: serviceOrder.customerComplaint ?? undefined,
+      receptionNotes: serviceOrder.receptionNotes ?? undefined,
+      recommendedService: serviceOrder.recommendedService ?? undefined,
+      expectedDeliveryAt: serviceOrder.expectedDeliveryAt?.toISOString(),
+      paymentMethod: serviceOrder.paymentMethod as ServiceOrderResponse['paymentMethod'],
+      paymentInstallments: serviceOrder.paymentInstallments ?? undefined,
+      paymentAnticipated: serviceOrder.paymentAnticipated,
+      paymentFirstDueAt: serviceOrder.paymentFirstDueAt?.toISOString(),
       technicianId: serviceOrder.technicianId ?? undefined,
       technicianName: technician?.name,
       openedAt: serviceOrder.openedAt.toISOString(),
@@ -446,6 +746,37 @@ export class ServiceOrderManager {
       statusHistory: options?.history?.map((item) => this.toHistoryItem(item)),
       totalAmountCents,
       items: itemResponses,
+      receipts: receiptResponses,
+      installments: options?.installments?.map((installment) => this.toInstallmentResponse(installment)),
+      receivedAmountCents,
+      outstandingAmountCents,
+      paymentStatus: receivedAmountCents === 0 ? 'AWAITING_PAYMENT' : outstandingAmountCents > 0 ? 'PARTIALLY_PAID' : 'PAID',
+    };
+  }
+
+  private toReceiptResponse(receipt: ServiceOrderReceiptEntity): ServiceOrderReceiptResponse {
+    return {
+      id: receipt.id,
+      serviceOrderId: receipt.serviceOrderId,
+      method: receipt.method as ServiceOrderReceiptResponse['method'],
+      amountCents: receipt.amountCents,
+      receivedAt: receipt.receivedAt.toISOString(),
+      confirmedBy: receipt.confirmedBy,
+      notes: receipt.notes ?? undefined,
+    };
+  }
+
+  private toInstallmentResponse(installment: ServiceOrderInstallmentEntity): ServiceOrderInstallmentResponse {
+    return {
+      id: installment.id,
+      serviceOrderId: installment.serviceOrderId,
+      installmentNumber: installment.installmentNumber,
+      installmentCount: installment.installmentCount,
+      amountCents: installment.amountCents,
+      dueAt: installment.dueAt.toISOString(),
+      status: installment.status as ServiceOrderInstallmentResponse['status'],
+      paidAt: installment.paidAt?.toISOString(),
+      receiptId: installment.receiptId ?? undefined,
     };
   }
 
@@ -458,4 +789,14 @@ export class ServiceOrderManager {
       changedAt: item.changedAt.toISOString(),
     };
   }
+}
+
+function addMonthsClamped(date: Date, months: number): Date {
+  const result = new Date(date);
+  const day = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() + months);
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(day, lastDay));
+  return result;
 }

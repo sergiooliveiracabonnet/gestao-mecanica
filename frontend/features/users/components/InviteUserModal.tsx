@@ -24,7 +24,7 @@ const inviteSchema = z.object({
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
 const ROLE_OPTIONS: Array<{ value: InviteFormValues['role']; label: string }> = [
-  { value: 'MANAGER', label: 'Gerente' },
+  { value: 'MANAGER', label: 'Gestor' },
   { value: 'MECHANIC', label: 'Mecânico' },
   { value: 'FRONT_DESK', label: 'Recepção' },
 ];

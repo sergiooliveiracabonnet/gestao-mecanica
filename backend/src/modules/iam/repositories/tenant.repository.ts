@@ -9,6 +9,35 @@ export interface CreateTenantInput {
   status?: string;
 }
 
+export interface UpdateTenantSettingsInput {
+  name?: string;
+  legalName?: string | null;
+  document?: string;
+  stateRegistration?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  email?: string | null;
+  website?: string | null;
+  addressStreet?: string | null;
+  addressNumber?: string | null;
+  addressComplement?: string | null;
+  addressDistrict?: string | null;
+  addressCity?: string | null;
+  addressState?: string | null;
+  addressPostalCode?: string | null;
+  logoDataUrl?: string | null;
+  documentFooter?: string | null;
+  smtpHost?: string | null;
+  smtpPort?: number;
+  smtpSecure?: boolean;
+  smtpUsername?: string | null;
+  smtpPassword?: string | null;
+  smtpFromName?: string | null;
+  smtpFromEmail?: string | null;
+  smtpReplyTo?: string | null;
+  smtpEnabled?: boolean;
+}
+
 @Injectable()
 export class TenantRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -31,6 +60,11 @@ export class TenantRepository {
     return this.prisma.unscoped.tenant.findFirst({
       where: { id, deletedAt: null },
     });
+  }
+
+  async updateSettings(id: string, data: UpdateTenantSettingsInput) {
+    await this.prisma.unscoped.tenant.updateMany({ where: { id, deletedAt: null }, data });
+    return this.byId(id);
   }
 
   // Global de propósito — checar unicidade de documento acontece antes de

@@ -3,12 +3,15 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import type { UserRole } from '@oficina/contracts';
+import type { PermissionKey, UserRole } from '@oficina/contracts';
+import { UserRepository } from '../../modules/iam/repositories/user.repository';
 
 export interface AuthenticatedUser {
   userId: string;
   tenantId: string;
   role: UserRole;
+  roleId?: string;
+  permissions?: PermissionKey[];
 }
 
 @Injectable()
@@ -16,6 +19,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
+    private readonly users: UserRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,9 +39,14 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync<AuthenticatedUser>(token);
+      const user = await this.users.byId(payload.userId);
+      if (!user || user.tenantId !== payload.tenantId || user.status !== 'active') {
+        throw new UnauthorizedException('Usuário bloqueado ou removido.');
+      }
       (request as Request & { user: AuthenticatedUser }).user = payload;
       return true;
-    } catch {
+    } catch (error) {
+      if (error instanceof UnauthorizedException) throw error;
       throw new UnauthorizedException('Token de acesso inválido ou expirado.');
     }
   }
