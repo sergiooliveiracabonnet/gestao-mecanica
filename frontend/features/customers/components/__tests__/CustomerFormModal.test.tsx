@@ -215,6 +215,7 @@ describe('CustomerFormModal', () => {
           status: 'DELIVERED',
           openedAt: '2026-01-01T00:00:00Z',
           createdAt: '2026-01-01T00:00:00Z',
+          totalAmountCents: 0,
         },
       ],
       total: 1,
@@ -244,6 +245,7 @@ describe('CustomerFormModal', () => {
       status: 'DELIVERED' as const,
       openedAt: '2026-01-01T00:00:00Z',
       createdAt: '2026-01-01T00:00:00Z',
+      totalAmountCents: 0,
     });
     vi.mocked(serviceOrdersApi.list).mockImplementation(async (request) => ({
       items: [soItem(request.offset === 0 ? 'so-page1' : 'so-page2')],

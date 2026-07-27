@@ -1,0 +1,131 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ServiceOrderResponse } from '@oficina/contracts';
+import { ServiceOrderItemsSection } from '../ServiceOrderItemsSection';
+import { serviceOrderItemsApi } from '../../api/service-order-items-api';
+
+vi.mock('../../api/service-order-items-api', () => ({
+  serviceOrderItemsApi: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+}));
+
+const { toastMock } = vi.hoisted(() => ({
+  toastMock: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('sonner', () => ({ toast: toastMock }));
+
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
+function renderWithClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
+const baseServiceOrder: ServiceOrderResponse = {
+  id: 'so-1',
+  tenantId: 't1',
+  customerId: 'c1',
+  customerName: 'João da Silva',
+  vehicleId: 'v1',
+  vehicleBrand: 'Fiat',
+  vehicleModel: 'Uno',
+  vehiclePlate: 'ABC1D23',
+  status: 'OPEN',
+  openedAt: '2026-07-01T00:00:00Z',
+  createdAt: '2026-07-01T00:00:00Z',
+  totalAmountCents: 13000,
+  items: [
+    {
+      id: 'item-1',
+      serviceOrderId: 'so-1',
+      type: 'PART',
+      description: 'Filtro de óleo',
+      quantity: 2,
+      unitPriceCents: 5000,
+      lineTotalCents: 10000,
+      createdAt: '2026-07-01T00:00:00Z',
+    },
+    {
+      id: 'item-2',
+      serviceOrderId: 'so-1',
+      type: 'LABOR',
+      description: 'Troca de óleo',
+      quantity: 1,
+      unitPriceCents: 3000,
+      lineTotalCents: 3000,
+      createdAt: '2026-07-01T00:00:00Z',
+    },
+  ],
+};
+
+describe('ServiceOrderItemsSection', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders existing items and the total', () => {
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+
+    expect(screen.getByText('Filtro de óleo')).toBeInTheDocument();
+    expect(screen.getByText('Troca de óleo')).toBeInTheDocument();
+    expect(screen.getByText('R$ 130,00')).toBeInTheDocument();
+  });
+
+  it('shows an empty state when there are no items', () => {
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={{ ...baseServiceOrder, items: [], totalAmountCents: 0 }} />);
+
+    expect(screen.getByText(/nenhum item lançado ainda/i)).toBeInTheDocument();
+  });
+
+  it('adds an item and clears the form on success', async () => {
+    vi.mocked(serviceOrderItemsApi.create).mockResolvedValue({
+      item: {
+        id: 'item-3',
+        serviceOrderId: 'so-1',
+        type: 'PART',
+        description: 'Pastilha de freio',
+        quantity: 1,
+        unitPriceCents: 12000,
+        lineTotalCents: 12000,
+        createdAt: '2026-07-01T00:00:00Z',
+      },
+    });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+
+    await user.type(screen.getByPlaceholderText('Descrição'), 'Pastilha de freio');
+    await user.clear(screen.getByPlaceholderText('Qtd.'));
+    await user.type(screen.getByPlaceholderText('Qtd.'), '1');
+    await user.type(screen.getByPlaceholderText('Valor unit. (R$)'), '120');
+    await user.click(screen.getByRole('button', { name: /adicionar item/i }));
+
+    await waitFor(() =>
+      expect(serviceOrderItemsApi.create).toHaveBeenCalledWith({
+        serviceOrderId: 'so-1',
+        type: 'PART',
+        description: 'Pastilha de freio',
+        quantity: 1,
+        unitPriceCents: 12000,
+      }),
+    );
+    await waitFor(() => expect(screen.getByPlaceholderText('Descrição')).toHaveValue(''));
+  });
+
+  it('removing an item calls the delete mutation', async () => {
+    vi.mocked(serviceOrderItemsApi.delete).mockResolvedValue({ item: baseServiceOrder.items![0] });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+
+    const [removeButton] = screen.getAllByRole('button', { name: /remover/i });
+    await user.click(removeButton);
+
+    await waitFor(() => expect(serviceOrderItemsApi.delete).toHaveBeenCalledWith({ id: 'item-1' }));
+  });
+});

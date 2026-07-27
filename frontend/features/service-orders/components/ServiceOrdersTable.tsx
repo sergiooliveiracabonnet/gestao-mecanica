@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { ServiceOrderListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { formatCurrencyBRL } from '@/lib/format-currency';
 import { StatusBadge } from './StatusBadge';
 
 interface ServiceOrdersTableProps {
@@ -58,6 +59,7 @@ export function ServiceOrdersTable({
             <TableHead>Técnico</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Abertura</TableHead>
+            <TableHead>Valor</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -74,6 +76,7 @@ export function ServiceOrdersTable({
                 <StatusBadge status={serviceOrder.status} />
               </TableCell>
               <TableCell className="text-text-muted">{new Date(serviceOrder.openedAt).toLocaleDateString('pt-BR')}</TableCell>
+              <TableCell className="font-medium text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
