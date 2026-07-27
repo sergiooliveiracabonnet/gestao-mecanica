@@ -1,4 +1,4 @@
-import { Global, Module, OnModuleInit } from '@nestjs/common';
+import { forwardRef, Module, OnModuleInit } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { MAINTENANCE_ALERTS_QUEUE } from '../../shared/queue/queue.module';
@@ -18,20 +18,26 @@ import { MaintenanceAlertScanProcessor } from './processors/maintenance-alert-sc
 const DAILY_SCAN_CRON = '0 4 * * *';
 const DAILY_SCAN_JOB_ID = 'maintenance-alerts-daily-scan';
 
-// `@Global()`: evita um ciclo de módulos. ServiceOrderManager (módulo
-// ServiceOrdersModule) precisa resolver automaticamente um alerta obsoleto
-// quando uma OS chega a DELIVERED, mas este módulo importa ServiceOrdersModule
-// (pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped no job) — se
-// ServiceOrdersModule importasse este módulo de volta, seria um ciclo. Sendo
-// `@Global()`, ServiceOrderManager injeta MaintenanceAlertRepository direto
-// no construtor sem ServiceOrdersModule precisar importar nada daqui (mesmo
-// padrão já usado por AuditLogModule/AuditLogService no projeto). Ver seção
-// "Decisão de arquitetura" do plano.
-@Global()
+// `@nestjs/bullmq` sobe um Worker real (conexão Redis própria) pra cada
+// provider decorado com @Processor assim que o módulo é instanciado — não é
+// algo que o guard NODE_ENV==='test' dentro do onModuleInit alcança. Cada
+// arquivo de teste e2e sobe o AppModule inteiro em paralelo (processos Jest
+// distintos), então sem esta exclusão múltiplos Workers reais ficam
+// conectados à mesma fila/Redis compartilhado ao mesmo tempo — mesmo achado
+// já documentado em FipeModule (Gate 3.5 daquela feature).
+const MAINTENANCE_ALERT_SCAN_PROCESSOR_PROVIDERS = process.env.NODE_ENV === 'test' ? [] : [MaintenanceAlertScanProcessor];
+
+// Ciclo de módulos: ServiceOrderManager precisa resolver automaticamente um
+// alerta obsoleto quando uma OS chega a DELIVERED (importa este módulo pra
+// usar MaintenanceAlertRepository), e este módulo importa ServiceOrdersModule
+// pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped no job diário.
+// `forwardRef()` nos dois lados resolve o ciclo sem alargar o que fica
+// injetável em toda a aplicação (ao contrário de marcar um dos dois como
+// `@Global()`) — ver seção "Decisão de arquitetura" do plano.
 @Module({
-  imports: [VehiclesModule, ServiceOrdersModule, IamModule, CustomersModule],
+  imports: [VehiclesModule, forwardRef(() => ServiceOrdersModule), IamModule, CustomersModule],
   controllers: [MaintenanceAlertsController],
-  providers: [MaintenanceAlertManager, MaintenanceAlertRepository, MaintenanceAlertScanProcessor],
+  providers: [MaintenanceAlertManager, MaintenanceAlertRepository, ...MAINTENANCE_ALERT_SCAN_PROCESSOR_PROVIDERS],
   exports: [MaintenanceAlertRepository],
 })
 export class MaintenanceAlertsModule implements OnModuleInit {
