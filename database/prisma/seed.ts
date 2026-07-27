@@ -19,11 +19,21 @@ const ROLE_PERMISSIONS: Record<(typeof ROLES)[number], string[]> = {
 
 async function main() {
   for (const name of ROLES) {
-    await prisma.role.upsert({
-      where: { name },
-      update: {},
-      create: { name },
+    const existingRole = await prisma.role.findFirst({
+      where: { name, tenantId: null, deletedAt: null },
+      select: { id: true },
     });
+
+    if (existingRole) {
+      await prisma.role.update({
+        where: { id: existingRole.id },
+        data: { baseRole: name, isSystem: true },
+      });
+    } else {
+      await prisma.role.create({
+        data: { name, baseRole: name, isSystem: true },
+      });
+    }
   }
 
   for (const permission of PERMISSIONS) {
@@ -34,7 +44,9 @@ async function main() {
     });
   }
 
-  const roles = await prisma.role.findMany();
+  const roles = await prisma.role.findMany({
+    where: { tenantId: null, deletedAt: null },
+  });
   const permissions = await prisma.permission.findMany();
 
   for (const roleName of ROLES) {
