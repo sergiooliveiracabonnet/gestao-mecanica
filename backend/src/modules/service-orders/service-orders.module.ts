@@ -15,5 +15,9 @@ import { ServiceOrderStatusHistoryRepository } from './repositories/service-orde
   imports: [VehiclesModule, CustomersModule, IamModule],
   controllers: [ServiceOrdersController],
   providers: [ServiceOrderManager, ServiceOrderRepository, ServiceOrderStatusHistoryRepository],
+  // MaintenanceAlertsModule (Feature Motor de Manutenção Preventiva) importa
+  // este módulo pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped
+  // no job diário de scan.
+  exports: [ServiceOrderRepository],
 })
 export class ServiceOrdersModule {}
