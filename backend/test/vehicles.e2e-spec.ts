@@ -273,10 +273,27 @@ describe('Vehicles (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/vehicles/list')
       .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ offset: 0, limit: 10, search: 'Alcatrãozinho' });
+      .send({ offset: 0, limit: 10, search: 'Alcatrãozinho', match_owner: true });
 
     expect(response.status).toBe(200);
     expect(response.body.items.some((item: { customer_id: string }) => item.customer_id === customerId)).toBe(true);
+  });
+
+  it('does NOT match by owner name/document when match_owner is not sent (opt-in, default false)', async () => {
+    const admin = await signupAdmin(`searchnamegate-${Date.now()}`);
+    const customerId = await createCustomerWithNameAndDocument(admin.access_token, 'Zeferino Alcatrãozinho da Silva', generateValidCpf());
+    await request(app.getHttpServer())
+      .post('/api/v1/vehicles')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send(vehiclePayload(customerId, 'searchnamegate'));
+
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/vehicles/list')
+      .set('Authorization', `Bearer ${admin.access_token}`)
+      .send({ offset: 0, limit: 10, search: 'Alcatrãozinho' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.total).toBe(0);
   });
 
   it('matches a vehicle by the owning customer document (CPF), even when no vehicle field matches', async () => {
@@ -291,7 +308,7 @@ describe('Vehicles (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/vehicles/list')
       .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ offset: 0, limit: 10, search: document });
+      .send({ offset: 0, limit: 10, search: document, match_owner: true });
 
     expect(response.status).toBe(200);
     expect(response.body.items.some((item: { customer_id: string }) => item.customer_id === customerId)).toBe(true);
@@ -308,7 +325,7 @@ describe('Vehicles (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/vehicles/list')
       .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ offset: 0, limit: 10, search: 'termo-que-nao-bate-em-nada-xyz' });
+      .send({ offset: 0, limit: 10, search: 'termo-que-nao-bate-em-nada-xyz', match_owner: true });
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBe(0);
@@ -327,7 +344,7 @@ describe('Vehicles (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/vehicles/list')
       .set('Authorization', `Bearer ${adminB.access_token}`)
-      .send({ offset: 0, limit: 10, search: sharedName });
+      .send({ offset: 0, limit: 10, search: sharedName, match_owner: true });
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBe(0);

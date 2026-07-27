@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -88,5 +89,49 @@ describe('VehicleSearchCombobox', () => {
     await user.type(screen.getByRole('combobox'), 'x');
 
     expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  it('selects the highlighted result with the keyboard (Enter), without needing a click', async () => {
+    const otherVehicle = { ...vehicle, id: 'v2', model: 'Palio', plate: 'XYZ9W88' };
+    vi.mocked(vehiclesApi.list).mockResolvedValue({ items: [vehicle, otherVehicle], total: 2, offset: 0, limit: 20, hasMore: false });
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    renderWithClient(<VehicleSearchCombobox value="" onChange={onChange} />);
+
+    const input = screen.getByRole('combobox');
+    await user.type(input, 'Fiat');
+    await screen.findAllByRole('option');
+
+    await user.keyboard('{ArrowDown}');
+    await user.keyboard('{Enter}');
+
+    expect(onChange).toHaveBeenCalledWith('v2');
+  });
+
+  it('resets the displayed text when the parent clears value externally (e.g. modal reopened)', async () => {
+    vi.mocked(vehiclesApi.list).mockResolvedValue({ items: [vehicle], total: 1, offset: 0, limit: 20, hasMore: false });
+    const user = userEvent.setup();
+
+    function Harness() {
+      const [value, setValue] = useState('');
+      return (
+        <>
+          <VehicleSearchCombobox value={value} onChange={setValue} />
+          <button type="button" onClick={() => setValue('')}>
+            simular reabertura do modal
+          </button>
+        </>
+      );
+    }
+
+    renderWithClient(<Harness />);
+
+    await user.type(screen.getByRole('combobox'), 'Uno');
+    await user.click(await screen.findByRole('option', { name: /Fiat Uno/ }));
+    expect(screen.getByRole('combobox')).toHaveValue('Fiat Uno · ABC1D23 — João da Silva');
+
+    await user.click(screen.getByRole('button', { name: /simular reabertura/i }));
+
+    expect(screen.getByRole('combobox')).toHaveValue('');
   });
 });

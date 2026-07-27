@@ -164,9 +164,12 @@ export class VehicleManager {
   }
 
   async list(request: VehicleListRequest): Promise<PaginationData<VehicleListItemResponse>> {
-    // Além de marca/modelo/placa, `search` também casa pelo nome/documento
-    // do cliente dono do veículo (ver CustomerRepository.searchIdsByNameOrDocument).
-    const matchingCustomerIds = request.search ? await this.customerRepository.searchIdsByNameOrDocument(request.search) : undefined;
+    // `matchOwner` opt-in (default false): só o VehicleSearchCombobox (abertura
+    // de OS) liga isso — a tela de Veículos mantém a busca original por
+    // marca/modelo/placa, sem casar pelo nome/documento do dono (ver
+    // VehicleListRequest.matchOwner e comentário lá).
+    const matchingCustomerIds =
+      request.search && request.matchOwner ? await this.customerRepository.searchIdsByNameOrDocument(request.search) : undefined;
 
     const { items, total } = await this.vehicleRepository.listByTenant(
       request.offset,

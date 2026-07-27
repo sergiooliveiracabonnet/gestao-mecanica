@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import type { CustomerAddress } from '@oficina/contracts';
 import type { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
@@ -46,6 +46,8 @@ export interface ListCustomersResult<T> {
 
 @Injectable()
 export class CustomerRepository {
+  private readonly logger = new Logger(CustomerRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   // `this.prisma.client` (tenant-scoped): toda operação de Customer roda
@@ -125,6 +127,9 @@ export class CustomerRepository {
       select: { id: true },
       take: limit,
     });
+    if (customers.length === limit) {
+      this.logger.warn(`searchIdsByNameOrDocument truncated at ${limit} matches for a search term — results may be incomplete`);
+    }
     return customers.map((customer) => customer.id);
   }
 
